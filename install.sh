@@ -210,6 +210,22 @@ info "npm $(npm -v) detectado"
 
 ensure_ollama
 
+ensure_tts() {
+  if [ "$(uname)" != "Linux" ]; then
+    return
+  fi
+  if command -v espeak-ng &>/dev/null && command -v speech-dispatcher &>/dev/null; then
+    info "TTS: espeak-ng + speech-dispatcher detectados"
+    return
+  fi
+  warn "Instalando dependencias de voz (TTS)..."
+  if command -v apt &>/dev/null; then
+    sudo apt install -y espeak-ng speech-dispatcher-espeak-ng speech-dispatcher 2>/dev/null || true
+    info "TTS: dependencias de voz instaladas"
+  fi
+}
+ensure_tts
+
 echo ""
 echo "Instalando dependencias..."
 cd "$APP_DIR"
