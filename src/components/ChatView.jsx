@@ -10,6 +10,8 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   const [recording, setRecording] = useState(false)
   const [ttsLang, setTtsLang] = useState('es-ES')
   const [speaking, setSpeaking] = useState(null)
+  const [ttsVoices, setTtsVoices] = useState([])
+  const [ttsError, setTtsError] = useState(null)
   const [localConvId, setLocalConvId] = useState(null)
 
   const messagesEndRef = useRef(null)
@@ -84,12 +86,19 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   }, [])
 
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.getVoices()
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices()
+    if (!('speechSynthesis' in window)) {
+      setTtsError('Tu navegador no soporta síntesis de voz')
+      return
+    }
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices()
+      if (v.length > 0) {
+        setTtsVoices(v)
+        setTtsError(null)
       }
     }
+    loadVoices()
+    window.speechSynthesis.onvoiceschanged = loadVoices
   }, [])
 
   const handleNewChat = () => {
@@ -289,7 +298,10 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   }
 
   const speakText = (text, index) => {
-    if (!('speechSynthesis' in window)) return
+    if (!('speechSynthesis' in window)) {
+      setTtsError('Tu navegador no soporta síntesis de voz')
+      return
+    }
 
     if (speaking === index) {
       window.speechSynthesis.cancel()
@@ -299,13 +311,19 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
 
     window.speechSynthesis.cancel()
 
+    // Retry loading voices if empty (Chromium quirk)
+    let voices = ttsVoices
+    if (voices.length === 0) {
+      voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) setTtsVoices(voices)
+    }
+
+    const langPrefix = ttsLang.split('-')[0]
+    const available = voices.filter(v => v.lang.startsWith(langPrefix))
+
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = ttsLang
     utterance.rate = 1
-
-    const voices = window.speechSynthesis.getVoices()
-    const langPrefix = ttsLang.split('-')[0]
-    const available = voices.filter(v => v.lang.startsWith(langPrefix))
 
     const femaleVoice = available.find(v =>
       v.name.toLowerCase().includes('femenina') ||
@@ -325,8 +343,14 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     }
 
     utterance.onend = () => setSpeaking(null)
-    utterance.onerror = () => setSpeaking(null)
+    utterance.onerror = (e) => {
+      setSpeaking(null)
+      if (voices.length === 0) {
+        setTtsError('No hay voces disponibles. En Linux: instala espeak-ng y speech-dispatcher')
+      }
+    }
     setSpeaking(index)
+    setTtsError(null)
     window.speechSynthesis.speak(utterance)
   }
 
@@ -377,6 +401,7 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
           >
             {ttsLang === 'es-ES' ? '🇪🇸 ES' : '🇺🇸 EN'}
           </button>
+          {ttsError && <span className="tts-error" title={ttsError}>🔇</span>}
           {messages.length > 0 && (
             <>
               <button className="header-btn" onClick={copyMarkdown} title="Copiar como Markdown">📋</button>

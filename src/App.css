@@ -828,6 +828,12 @@ body {
   border-color: var(--accent);
 }
 
+.tts-error {
+  cursor: help;
+  opacity: 0.6;
+  font-size: 14px;
+}
+
 .message-images {
   display: flex;
   flex-wrap: wrap;
