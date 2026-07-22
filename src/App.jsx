@@ -35,6 +35,10 @@ function applyTheme(themeKey) {
   r.style.setProperty('--accent-hover', theme.accentHover)
 }
 
+function applyFontSize(size) {
+  document.documentElement.style.setProperty('--font-size', `${size}px`)
+}
+
 export default function App() {
   const [models, setModels] = useState([])
   const [ollamaRunning, setOllamaRunning] = useState(false)
@@ -51,6 +55,7 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState(null)
   const [conversationId, setConversationId] = useState(null)
   const [historyTrigger, setHistoryTrigger] = useState(0)
+  const [fontSize, setFontSize] = useState(14)
 
   const loadModels = useCallback(async () => {
     const running = await checkOllamaStatus()
@@ -86,9 +91,19 @@ export default function App() {
   }, [currentTheme])
 
   useEffect(() => {
+    applyFontSize(fontSize)
+    localStorage.setItem('ingenia-font-size', String(fontSize))
+  }, [fontSize])
+
+  useEffect(() => {
     const savedTheme = localStorage.getItem('ollama-theme')
     if (savedTheme && THEMES[savedTheme]) {
       setCurrentTheme(savedTheme)
+    }
+    const savedFontSize = localStorage.getItem('ingenia-font-size')
+    if (savedFontSize) {
+      const n = Number(savedFontSize)
+      if (n >= 10 && n <= 24) setFontSize(n)
     }
     const savedParams = localStorage.getItem('ollama-params')
     if (savedParams) {
@@ -193,6 +208,8 @@ export default function App() {
         onClose={() => { setSettingsOpen(false); setView('chat') }}
         params={params}
         onParamsChange={handleParamsChange}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
       />
     </div>
   )

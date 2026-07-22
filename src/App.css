@@ -5,6 +5,7 @@
 }
 
 :root {
+  --font-size: 14px;
   --bg-primary: #0a0a0f;
   --bg-secondary: #111118;
   --bg-tertiary: #1a1a24;
@@ -747,7 +748,7 @@ body {
 }
 
 .message-text {
-  font-size: 14px;
+  font-size: var(--font-size, 14px);
   line-height: 1.7;
   color: var(--text-primary);
   white-space: pre-wrap;

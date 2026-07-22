@@ -18,7 +18,7 @@ const PARAM_INFO = {
   num_predict: { label: 'Max Tokens', min: -1, max: 4096, step: 64, desc: 'Max tokens a generar (-1 = sin límite)' },
 }
 
-export default function SettingsModal({ isOpen, onClose, params, onParamsChange }) {
+export default function SettingsModal({ isOpen, onClose, params, onParamsChange, fontSize, onFontSizeChange }) {
   const [localParams, setLocalParams] = useState({ ...DEFAULT_PARAMS, ...params })
 
   useEffect(() => {
@@ -45,28 +45,50 @@ export default function SettingsModal({ isOpen, onClose, params, onParamsChange 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>⚙️ Configuración de Parámetros</h2>
+          <h2>⚙️ Configuración</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          {Object.entries(PARAM_INFO).map(([key, info]) => (
-            <div key={key} className="param-row">
+          <div className="settings-section">
+            <h3>Tamaño de letra</h3>
+            <p className="param-desc">Ajusta el tamaño del texto en los mensajes</p>
+            <div className="param-row">
               <div className="param-header">
-                <label className="param-label">{info.label}</label>
-                <span className="param-value">{localParams[key]}</span>
+                <span className="param-value" style={{ fontSize: `${fontSize}px` }}>Aa</span>
+                <span className="param-value">{fontSize}px</span>
               </div>
-              <p className="param-desc">{info.desc}</p>
               <input
                 type="range"
                 className="param-slider"
-                min={info.min}
-                max={info.max}
-                step={info.step}
-                value={localParams[key]}
-                onChange={e => handleChange(key, e.target.value)}
+                min={10}
+                max={24}
+                step={1}
+                value={fontSize}
+                onChange={e => onFontSizeChange(Number(e.target.value))}
               />
             </div>
-          ))}
+          </div>
+          <div className="settings-section">
+            <h3>Parámetros del modelo</h3>
+            {Object.entries(PARAM_INFO).map(([key, info]) => (
+              <div key={key} className="param-row">
+                <div className="param-header">
+                  <label className="param-label">{info.label}</label>
+                  <span className="param-value">{localParams[key]}</span>
+                </div>
+                <p className="param-desc">{info.desc}</p>
+                <input
+                  type="range"
+                  className="param-slider"
+                  min={info.min}
+                  max={info.max}
+                  step={info.step}
+                  value={localParams[key]}
+                  onChange={e => handleChange(key, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
         <div className="modal-footer">
           <button className="modal-btn reset" onClick={handleReset}>Restablecer</button>
