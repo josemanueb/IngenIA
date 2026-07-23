@@ -176,10 +176,8 @@ echo ============================================
 >> "!INSTALL_DIR!\start.bat" echo set "NODE=node"
 >> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\node_portable\node.exe" set "NODE=%%~dp0\node_portable\node.exe"
 >> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\node_portable\*") do if exist "%%%%d\node.exe" set "NODE=%%%%d\node.exe"
->> "!INSTALL_DIR!\start.bat" echo if "^!NODE^!"=="node" (
+>> "!INSTALL_DIR!\start.bat" echo if "%%NODE%%"=="node" (
 >> "!INSTALL_DIR!\start.bat" echo   where node ^>nul 2^>^&1 || (
->> "!INSTALL_DIR!\start.bat" echo     echo [^!^] Node.js no encontrado
->> "!INSTALL_DIR!\start.bat" echo     pause
 >> "!INSTALL_DIR!\start.bat" echo     exit /b 1
 >> "!INSTALL_DIR!\start.bat" echo   ^)
 >> "!INSTALL_DIR!\start.bat" echo ^)
@@ -189,26 +187,22 @@ echo ============================================
 >> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\ollama_portable\ollama.exe" set "OLLAMA=%%~dp0\ollama_portable\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\ollama_portable\*") do if exist "%%%%d\ollama.exe" set "OLLAMA=%%%%d\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo echo Verificando Ollama...
 >> "!INSTALL_DIR!\start.bat" echo curl -s http://localhost:11434/api/tags ^>nul 2^>^&1
 >> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 (
->> "!INSTALL_DIR!\start.bat" echo if exist "^!OLLAMA^!" (
->> "!INSTALL_DIR!\start.bat" echo     echo Iniciando Ollama...
->> "!INSTALL_DIR!\start.bat" echo     start /b "" "^!OLLAMA^!" serve
+>> "!INSTALL_DIR!\start.bat" echo   if exist "%%OLLAMA%%" (
+>> "!INSTALL_DIR!\start.bat" echo     start /b "" "%%OLLAMA%%" serve
 >> "!INSTALL_DIR!\start.bat" echo     timeout /t 5 /nobreak ^>nul
->> "!INSTALL_DIR!\start.bat" echo   ^) else (
->> "!INSTALL_DIR!\start.bat" echo     echo [^!^] Ollama no encontrado
 >> "!INSTALL_DIR!\start.bat" echo   ^)
 >> "!INSTALL_DIR!\start.bat" echo ^)
 >> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo echo Iniciando IngenIA...
->> "!INSTALL_DIR!\start.bat" echo start /b "" "^!NODE^!" server.mjs
+>> "!INSTALL_DIR!\start.bat" echo start /b "" "%%NODE%%" server.mjs
 >> "!INSTALL_DIR!\start.bat" echo timeout /t 3 /nobreak ^>nul
 >> "!INSTALL_DIR!\start.bat" echo start http://localhost:5173
->> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo echo IngenIA abierto en http://localhost:5173
->> "!INSTALL_DIR!\start.bat" echo pause
 echo [OK] start.bat creado
+
+> "!INSTALL_DIR!\launch.vbs" echo Set ws = CreateObject("WScript.Shell")
+>> "!INSTALL_DIR!\launch.vbs" echo ws.Run """" ^& ws.CurrentDirectory ^& "\start.bat"", 0, False
+echo [OK] launch.vbs creado (lanza IngenIA sin ventana de terminal)
 
 > "!INSTALL_DIR!\uninstall.bat" echo @echo off
 >> "!INSTALL_DIR!\uninstall.bat" echo setlocal enabledelayedexpansion
@@ -218,7 +212,7 @@ echo [OK] start.bat creado
 >> "!INSTALL_DIR!\uninstall.bat" echo echo ============================================
 >> "!INSTALL_DIR!\uninstall.bat" echo echo.
 >> "!INSTALL_DIR!\uninstall.bat" echo set "INSTALL_DIR=%%LOCALAPPDATA%%\IngenIA"
->> "!INSTALL_DIR!\uninstall.bat" echo taskkill /fi "IMAGENAME eq node.exe" /fi "WINDOWTITLE eq IngenIA" ^>nul 2^>^&1
+>> "!INSTALL_DIR!\uninstall.bat" echo taskkill /f /im node.exe ^>nul 2^>^&1
 >> "!INSTALL_DIR!\uninstall.bat" echo timeout /t 2 /nobreak ^>nul
 >> "!INSTALL_DIR!\uninstall.bat" echo if exist "%%INSTALL_DIR%%" (
 >> "!INSTALL_DIR!\uninstall.bat" echo   rmdir /s /q "%%INSTALL_DIR%%"
@@ -244,14 +238,14 @@ echo ============================================
 set "VBS=%TEMP%\ingenia_shortcut.vbs"
 > "%VBS%" echo Set ws = CreateObject("WScript.Shell")
 >> "%VBS%" echo Set sc = ws.CreateShortcut("%USERPROFILE%\Desktop\IngenIA.lnk")
->> "%VBS%" echo sc.TargetPath = "!INSTALL_DIR!\start.bat"
+>> "%VBS%" echo sc.TargetPath = "!INSTALL_DIR!\launch.vbs"
 >> "%VBS%" echo sc.WorkingDirectory = "!INSTALL_DIR!"
 >> "%VBS%" echo sc.Description = "IngenIA - Chat con Ollama"
 >> "%VBS%" echo sc.Save()
 cscript //nologo "%VBS%"
 if !ERRORLEVEL! neq 0 (
     echo [!] No se pudo crear acceso directo
-    echo    Crealo manualmente apuntando a: !INSTALL_DIR!\start.bat
+    echo    Crealo manualmente apuntando a: !INSTALL_DIR!\launch.vbs
 ) else (
     echo [OK] Acceso directo creado en el Escritorio
 )
