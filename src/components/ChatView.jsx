@@ -99,7 +99,16 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     }
     loadVoices()
     window.speechSynthesis.onvoiceschanged = loadVoices
-  }, [])
+    // Force periodic retry on Linux (speech-dispatcher may start late)
+    const retryInterval = setInterval(() => {
+      const v = window.speechSynthesis.getVoices()
+      if (v.length > 0 && ttsVoices.length === 0) {
+        setTtsVoices(v)
+        setTtsError(null)
+      }
+    }, 3000)
+    return () => clearInterval(retryInterval)
+  }, [ttsVoices.length])
 
   const handleNewChat = () => {
     if (messages.length > 0) {
@@ -311,15 +320,29 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
 
     window.speechSynthesis.cancel()
 
-    // Retry loading voices if empty (Chromium quirk)
     let voices = ttsVoices
     if (voices.length === 0) {
       voices = window.speechSynthesis.getVoices()
       if (voices.length > 0) setTtsVoices(voices)
     }
 
+    if (voices.length === 0) {
+      const isLinux = navigator.userAgent.includes('Linux')
+      setTtsError(isLinux
+        ? 'Linux: ejecuta "speech-dispatcher --spawn" en terminal y recarga la página'
+        : 'No se detectaron voces. Revisa la configuración de voz del sistema')
+      setSpeaking(null)
+      return
+    }
+
     const langPrefix = ttsLang.split('-')[0]
     const available = voices.filter(v => v.lang.startsWith(langPrefix))
+
+    if (available.length === 0) {
+      setTtsError(`No hay voces para ${ttsLang}. Puedes cambiar idioma en el botón ${ttsLang === 'es-ES' ? '🇪🇸 ES' : '🇺🇸 EN'}`)
+      setSpeaking(null)
+      return
+    }
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = ttsLang
@@ -338,17 +361,12 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
 
     if (femaleVoice) {
       utterance.voice = femaleVoice
-    } else if (available.length > 0) {
+    } else {
       utterance.voice = available[0]
     }
 
     utterance.onend = () => setSpeaking(null)
-    utterance.onerror = (e) => {
-      setSpeaking(null)
-      if (voices.length === 0) {
-        setTtsError('No hay voces disponibles. En Linux: instala espeak-ng y speech-dispatcher')
-      }
-    }
+    utterance.onerror = () => setSpeaking(null)
     setSpeaking(index)
     setTtsError(null)
     window.speechSynthesis.speak(utterance)

@@ -216,12 +216,17 @@ ensure_tts() {
   fi
   if command -v espeak-ng &>/dev/null && command -v speech-dispatcher &>/dev/null; then
     info "TTS: espeak-ng + speech-dispatcher detectados"
-    return
+  else
+    warn "Instalando dependencias de voz (TTS)..."
+    if command -v apt &>/dev/null; then
+      sudo apt install -y espeak-ng speech-dispatcher-espeak-ng speech-dispatcher 2>/dev/null || true
+    fi
   fi
-  warn "Instalando dependencias de voz (TTS)..."
-  if command -v apt &>/dev/null; then
-    sudo apt install -y espeak-ng speech-dispatcher-espeak-ng speech-dispatcher 2>/dev/null || true
-    info "TTS: dependencias de voz instaladas"
+  # Start speech-dispatcher so Chrome detects it
+  if command -v speech-dispatcher &>/dev/null; then
+    speech-dispatcher --spawn 2>/dev/null || true
+    spd-say "Voz lista" 2>/dev/null || true
+    info "TTS: speech-dispatcher iniciado"
   fi
 }
 ensure_tts
@@ -295,6 +300,12 @@ if [ -f "$APP_DIR/ollama_portable/ollama" ]; then
 fi
 
 OLAMA_PID=""
+SPEECH_PID=""
+
+# Start speech-dispatcher for TTS (Chrome requires it running)
+if command -v speech-dispatcher &>/dev/null; then
+  speech-dispatcher --spawn 2>/dev/null || true
+fi
 
 check_ollama() {
   curl -sf --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1

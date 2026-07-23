@@ -24,6 +24,11 @@ fi
 
 OLAMA_PID=""
 
+# Start speech-dispatcher for TTS (Chrome requires it running)
+if command -v speech-dispatcher &>/dev/null; then
+  speech-dispatcher --spawn 2>/dev/null || true
+fi
+
 check_ollama() {
   curl -sf --max-time 2 http://localhost:11434/api/tags >/dev/null 2>&1
 }
