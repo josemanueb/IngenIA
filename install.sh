@@ -222,11 +222,8 @@ ensure_tts() {
       sudo apt install -y espeak-ng speech-dispatcher-espeak-ng speech-dispatcher 2>/dev/null || true
     fi
   fi
-  # Start speech-dispatcher so Chrome detects it
   if command -v speech-dispatcher &>/dev/null; then
     speech-dispatcher --spawn 2>/dev/null || true
-    spd-say "Voz lista" 2>/dev/null || true
-    info "TTS: speech-dispatcher iniciado"
   fi
 }
 ensure_tts
