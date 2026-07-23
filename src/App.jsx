@@ -122,6 +122,25 @@ export default function App() {
       }
     }
     checkUpdate()
+
+    // Startup chime
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const notes = [261.63, 329.63, 392.00, 523.25]
+      const gain = ctx.createGain()
+      gain.connect(ctx.destination)
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5)
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        osc.connect(gain)
+        osc.start(ctx.currentTime + i * 0.1)
+        osc.stop(ctx.currentTime + i * 0.1 + 0.5)
+      })
+      setTimeout(() => ctx.close(), 2000)
+    } catch {}
   }, [])
 
   const handleModelSelectComplete = () => {
