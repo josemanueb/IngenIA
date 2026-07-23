@@ -2,10 +2,12 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { exec } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.INGENIA_PORT || 5173
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const isWin = process.platform === 'win32'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -56,6 +58,50 @@ function proxyRequest(req, res) {
   req.pipe(proxy)
 }
 
+function collectBody(req) {
+  return new Promise((resolve) => {
+    const chunks = []
+    req.on('data', c => chunks.push(c))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()))
+  })
+}
+
+function sendJson(res, data, status = 200) {
+  res.writeHead(status, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify(data))
+}
+
+function handleTts(req, res) {
+  collectBody(req).then(body => {
+    let text, lang
+    try {
+      const p = JSON.parse(body)
+      text = p.text
+      lang = p.lang || 'es'
+    } catch {
+      return sendJson(res, { ok: false, error: 'JSON invalido' }, 400)
+    }
+    if (!text) return sendJson(res, { ok: false, error: 'text requerido' }, 400)
+
+    const langCode = lang.startsWith('en') ? 'en' : 'es'
+
+    if (isWin) {
+      sendJson(res, { ok: false, error: 'TTS del sistema no soportado en Windows, usa Chrome/Edge' })
+      return
+    }
+
+    exec(`spd-say -l ${langCode} "${text.replace(/["\\]/g, '\\$&')}"`, (err) => {
+      if (err) {
+        exec(`espeak-ng -v ${langCode} "${text.replace(/["\\]/g, '\\$&')}" 2>/dev/null`, (err2) => {
+          sendJson(res, { ok: !err2, error: err2 ? 'No hay spd-say ni espeak-ng' : null })
+        })
+      } else {
+        sendJson(res, { ok: true })
+      }
+    })
+  })
+}
+
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/api/')) {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -65,6 +111,11 @@ const server = http.createServer((req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(204)
       res.end()
+      return
+    }
+
+    if (req.url === '/api/tts' && req.method === 'POST') {
+      handleTts(req, res)
       return
     }
 

@@ -12,6 +12,7 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   const [speaking, setSpeaking] = useState(null)
   const [ttsVoices, setTtsVoices] = useState([])
   const [ttsError, setTtsError] = useState(null)
+  const [ttsMode, setTtsMode] = useState('auto')
   const [localConvId, setLocalConvId] = useState(null)
 
   const messagesEndRef = useRef(null)
@@ -306,6 +307,29 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     setRecording(true)
   }
 
+  const speakViaServer = async (text, lang) => {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang }),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        setTtsError(data.error || 'Error en TTS del servidor')
+        setSpeaking(null)
+        return false
+      }
+      // spd-say is async, give it a moment then check if audio played
+      setTtsMode('srv')
+      return true
+    } catch {
+      setTtsError('No se pudo conectar al servidor TTS')
+      setSpeaking(null)
+      return false
+    }
+  }
+
   const speakText = (text, index) => {
     if (!('speechSynthesis' in window)) {
       setTtsError('Tu navegador no soporta síntesis de voz')
@@ -326,50 +350,42 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
       if (voices.length > 0) setTtsVoices(voices)
     }
 
-    if (voices.length === 0) {
-      const isLinux = navigator.userAgent.includes('Linux')
-      setTtsError(isLinux
-        ? 'Linux: ejecuta "speech-dispatcher --spawn" en terminal y recarga la página'
-        : 'No se detectaron voces. Revisa la configuración de voz del sistema')
-      setSpeaking(null)
-      return
-    }
-
     const langPrefix = ttsLang.split('-')[0]
     const available = voices.filter(v => v.lang.startsWith(langPrefix))
 
-    if (available.length === 0) {
-      setTtsError(`No hay voces para ${ttsLang}. Puedes cambiar idioma en el botón ${ttsLang === 'es-ES' ? '🇪🇸 ES' : '🇺🇸 EN'}`)
-      setSpeaking(null)
+    // Use Web Speech API if voices available
+    if (voices.length > 0 && available.length > 0) {
+      setTtsMode('web')
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = ttsLang
+      utterance.rate = 1
+
+      const femaleVoice = available.find(v =>
+        v.name.toLowerCase().includes('femenina') ||
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('paulina') ||
+        v.name.toLowerCase().includes('helena') ||
+        v.name.toLowerCase().includes('monica') ||
+        (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('female')) ||
+        v.name.includes('♀') ||
+        v.name.includes('Female')
+      )
+
+      if (femaleVoice) utterance.voice = femaleVoice
+      else utterance.voice = available[0]
+
+      utterance.onend = () => setSpeaking(null)
+      utterance.onerror = () => setSpeaking(null)
+      setSpeaking(index)
+      setTtsError(null)
+      window.speechSynthesis.speak(utterance)
       return
     }
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = ttsLang
-    utterance.rate = 1
-
-    const femaleVoice = available.find(v =>
-      v.name.toLowerCase().includes('femenina') ||
-      v.name.toLowerCase().includes('female') ||
-      v.name.toLowerCase().includes('paulina') ||
-      v.name.toLowerCase().includes('helena') ||
-      v.name.toLowerCase().includes('monica') ||
-      (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('female')) ||
-      v.name.includes('♀') ||
-      v.name.includes('Female')
-    )
-
-    if (femaleVoice) {
-      utterance.voice = femaleVoice
-    } else {
-      utterance.voice = available[0]
-    }
-
-    utterance.onend = () => setSpeaking(null)
-    utterance.onerror = () => setSpeaking(null)
-    setSpeaking(index)
-    setTtsError(null)
-    window.speechSynthesis.speak(utterance)
+    // Fallback to server TTS via spd-say/espeak
+    speakViaServer(text, ttsLang).then(ok => {
+      if (ok) setSpeaking(index)
+    })
   }
 
   const exportMarkdown = () => {
@@ -419,6 +435,7 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
           >
             {ttsLang === 'es-ES' ? '🇪🇸 ES' : '🇺🇸 EN'}
           </button>
+          {ttsMode === 'srv' && <span className="tts-mode" title="Usando TTS del sistema (spd-say)">🖥️</span>}
           {ttsError && <span className="tts-error" title={ttsError}>🔇</span>}
           {messages.length > 0 && (
             <>
