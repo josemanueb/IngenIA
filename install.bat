@@ -241,13 +241,21 @@ echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-powershell -Command "$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut('%USERPROFILE%\Desktop\IngenIA.lnk'); $sc.TargetPath = '!INSTALL_DIR!\start.bat'; $sc.WorkingDirectory = '!INSTALL_DIR!'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save()"
+set "VBS=%TEMP%\ingenia_shortcut.vbs"
+> "%VBS%" echo Set ws = CreateObject("WScript.Shell")
+>> "%VBS%" echo Set sc = ws.CreateShortcut("%USERPROFILE%\Desktop\IngenIA.lnk")
+>> "%VBS%" echo sc.TargetPath = "!INSTALL_DIR!\start.bat"
+>> "%VBS%" echo sc.WorkingDirectory = "!INSTALL_DIR!"
+>> "%VBS%" echo sc.Description = "IngenIA - Chat con Ollama"
+>> "%VBS%" echo sc.Save()
+cscript //nologo "%VBS%"
 if !ERRORLEVEL! neq 0 (
     echo [!] No se pudo crear acceso directo
     echo    Crealo manualmente apuntando a: !INSTALL_DIR!\start.bat
 ) else (
     echo [OK] Acceso directo creado en el Escritorio
 )
+del "%VBS%" 2>nul
 
 echo.
 echo ============================================
