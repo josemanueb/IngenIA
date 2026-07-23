@@ -230,6 +230,9 @@ export default function App() {
         fontSize={fontSize}
         onFontSizeChange={setFontSize}
       />
+      <a href="https://github.com/josemanueb" target="_blank" className="watermark" title="JMB">
+        <img src="/icon-jmb.png" alt="JMB" />
+      </a>
     </div>
   )
 }
