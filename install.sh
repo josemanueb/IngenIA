@@ -251,18 +251,20 @@ if [ -d "$PORTABLE_DIR" ] && [ -f "$PORTABLE_DIR/bin/node" ]; then
   cp -r "$PORTABLE_DIR"/* "$INSTALL_DIR/node_portable/"
   info "Node.js portable copiado a la instalacion"
 elif [ -d "$PORTABLE_DIR" ]; then
-  # If the structure is different, find node and copy manually
-  local node_bin=$(find "$PORTABLE_DIR" -name "node" -type f 2>/dev/null | head -1)
+  local node_bin
+  node_bin=$(find "$PORTABLE_DIR" -name "node" -type f 2>/dev/null | head -1)
   if [ -n "$node_bin" ]; then
     mkdir -p "$INSTALL_DIR/node_portable/bin"
     cp "$node_bin" "$INSTALL_DIR/node_portable/bin/"
-    local node_dir=$(dirname "$node_bin")
-    # Copy npm too if in same dir
+    local node_dir
+    node_dir=$(dirname "$node_bin")
     if [ -f "$node_dir/npm" ]; then
       cp "$node_dir/npm" "$INSTALL_DIR/node_portable/bin/"
       cp -r "$node_dir/../lib" "$INSTALL_DIR/node_portable/" 2>/dev/null || true
     fi
     info "Node.js portable copiado a la instalacion"
+  else
+    warn "No se pudo copiar Node.js portable (binario no encontrado)"
   fi
 fi
 
@@ -297,7 +299,6 @@ if [ -f "$APP_DIR/ollama_portable/ollama" ]; then
 fi
 
 OLAMA_PID=""
-SPEECH_PID=""
 
 # Start speech-dispatcher for TTS (Chrome requires it running)
 if command -v speech-dispatcher &>/dev/null; then
@@ -352,7 +353,7 @@ STARTSCRIPT
 chmod +x "$INSTALL_DIR/start.sh"
 info "Script de inicio creado"
 
-DESKTOP_DIR="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
+DESKTOP_DIR="${XDG_DESKTOP_DIR:-$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")}"
 mkdir -p "$DESKTOP_DIR"
 DESKTOP_FILE="$DESKTOP_DIR/IngenIA.desktop"
 cat > "$DESKTOP_FILE" << EOF

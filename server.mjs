@@ -2,7 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { exec } from 'node:child_process'
+import { execFile } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.INGENIA_PORT || 5173
@@ -90,9 +90,9 @@ function handleTts(req, res) {
       return
     }
 
-    exec(`spd-say -l ${langCode} "${text.replace(/["\\]/g, '\\$&')}"`, (err) => {
+    execFile('spd-say', ['-l', langCode, text], (err) => {
       if (err) {
-        exec(`espeak-ng -v ${langCode} "${text.replace(/["\\]/g, '\\$&')}" 2>/dev/null`, (err2) => {
+        execFile('espeak-ng', ['-v', langCode, text], { timeout: 10000 }, (err2) => {
           sendJson(res, { ok: !err2, error: err2 ? 'No hay spd-say ni espeak-ng' : null })
         })
       } else {
@@ -123,12 +123,18 @@ const server = http.createServer((req, res) => {
     return
   }
 
-  let filePath = path.join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url)
+  const distDir = path.join(__dirname, 'dist')
+  let filePath = path.normalize(path.join(distDir, req.url === '/' ? 'index.html' : req.url))
+  if (!filePath.startsWith(distDir + path.sep) && filePath !== distDir) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' })
+    res.end('Forbidden')
+    return
+  }
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        fs.readFile(path.join(__dirname, 'dist', 'index.html'), (err2, data2) => {
+        fs.readFile(path.join(distDir, 'index.html'), (err2, data2) => {
           if (err2) {
             res.writeHead(404, { 'Content-Type': 'text/plain' })
             res.end('Not found')

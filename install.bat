@@ -187,7 +187,8 @@ echo ============================================
 >> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\ollama_portable\ollama.exe" set "OLLAMA=%%~dp0\ollama_portable\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\ollama_portable\*") do if exist "%%%%d\ollama.exe" set "OLLAMA=%%%%d\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo curl -s http://localhost:11434/api/tags ^>nul 2^>^&1
+>> "!INSTALL_DIR!\start.bat" echo where curl ^>nul 2^>^&1 ^&^& curl -s http://localhost:11434/api/tags ^>nul 2^>^&1
+>> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 powershell -NoP -C "try{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2|Out-Null;exit 0}catch{exit 1}" ^>nul 2^>^&1
 >> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 (
 >> "!INSTALL_DIR!\start.bat" echo   if exist "%%OLLAMA%%" (
 >> "!INSTALL_DIR!\start.bat" echo     start /b "" "%%OLLAMA%%" serve

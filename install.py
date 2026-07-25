@@ -27,6 +27,11 @@ NODE_MIRRORS = {
     "windows": f"https://nodejs.org/dist/v{NODE_VERSION}/node-v{NODE_VERSION}-win-x64.zip",
 }
 
+OLLAMA_MIRRORS = {
+    "linux": "https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tgz",
+    "windows": "https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip",
+}
+
 
 def detect_os():
     system = platform.system().lower()
@@ -105,6 +110,57 @@ def ensure_node(os_type, install_root):
         return str(node_exe)
 
 
+def ensure_ollama(os_type, install_root):
+    if shutil.which("ollama"):
+        print("Ollama detectado en PATH")
+        return
+    print("Ollama no encontrado. Descargando portable...")
+    portable_dir = install_root / "ollama_portable"
+    portable_dir.mkdir(parents=True, exist_ok=True)
+    url = OLLAMA_MIRRORS[os_type]
+    archive = install_root / "ollama_archive"
+    if os_type == "windows":
+        archive = archive.with_suffix(".zip")
+    else:
+        archive = archive.with_suffix(".tgz")
+    download(url, archive)
+    if os_type == "linux":
+        with tarfile.open(archive, "r:gz") as tar:
+            tar.extractall(portable_dir)
+        ollama_bin = portable_dir / "ollama"
+        if not ollama_bin.exists():
+            found = list(portable_dir.rglob("ollama"))
+            if found:
+                shutil.move(str(found[0]), str(ollama_bin))
+        os.chmod(ollama_bin, 0o755)
+    else:
+        with zipfile.ZipFile(archive, "r") as zf:
+            zf.extractall(portable_dir)
+        ollama_bin = portable_dir / "ollama.exe"
+        if not ollama_bin.exists():
+            found = list(portable_dir.rglob("ollama.exe"))
+            if found:
+                shutil.move(str(found[0]), str(ollama_bin))
+    archive.unlink()
+    env_path = os.environ.copy()
+    env_path["PATH"] = str(portable_dir) + os.pathsep + env_path.get("PATH", "")
+    subprocess.run([str(ollama_bin), "--version"], env=env_path)
+    print("Ollama portable listo")
+
+
+def ensure_tts_linux():
+    if not shutil.which("espeak-ng") or not shutil.which("speech-dispatcher"):
+        print("Instalando dependencias TTS...")
+        if shutil.which("apt"):
+            subprocess.run(["sudo", "apt", "install", "-y",
+                "espeak-ng", "speech-dispatcher-espeak-ng", "speech-dispatcher"],
+                check=False)
+        else:
+            print("Advertencia: no se pudo instalar TTS automáticamente")
+    if shutil.which("speech-dispatcher"):
+        subprocess.run(["speech-dispatcher", "--spawn"], check=False)
+
+
 def get_npm_path(node_bin):
     p = Path(node_bin).parent
     if p.name == "bin":
@@ -121,7 +177,10 @@ def run(cmd, cwd=None, check=True):
 
 
 def install_linux(install_dir, repo_dir):
-    desktop_dir = Path(os.environ.get("XDG_DESKTOP_DIR", Path.home() / "Desktop"))
+    try:
+        desktop_dir = Path(subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip())
+    except Exception:
+        desktop_dir = Path.home() / "Desktop"
     desktop_dir.mkdir(parents=True, exist_ok=True)
     desktop_file = desktop_dir / "IngenIA.desktop"
     menu_file = Path.home() / ".local" / "share" / "applications" / "IngenIA.desktop"
@@ -133,7 +192,7 @@ Name=IngenIA
 Comment=Chat y compara modelos de Ollama
 Exec={install_dir / 'start.sh'}
 Icon={install_dir / 'public' / 'icon.png'}
-Terminal=true
+Terminal=false
 Categories=Development;AI;
 StartupNotify=true
 """
@@ -143,20 +202,26 @@ StartupNotify=true
     print(f"Acceso directo creado en: {desktop_file}")
 
     os.chmod(install_dir / "start.sh", 0o755)
+    ensure_tts_linux()
 
 
 def install_windows(install_dir):
     desktop_dir = Path(os.environ.get("USERPROFILE", "")) / "Desktop"
     desktop_dir.mkdir(parents=True, exist_ok=True)
-    shortcut = desktop_dir / "IngenIA.lnk"
-    target = str(install_dir / "start.bat")
-    working_dir = str(install_dir)
 
+    launch_vbs = install_dir / "launch.vbs"
+    launch_vbs.write_text(
+        'Set ws = CreateObject("WScript.Shell")\n'
+        'ws.Run """" & ws.CurrentDirectory & "\\start.bat""", 0, False\n',
+        encoding="utf-8",
+    )
+
+    shortcut = desktop_dir / "IngenIA.lnk"
     ps = f"""
 $ws = New-Object -ComObject WScript.Shell
 $sc = $ws.CreateShortcut('{shortcut}')
-$sc.TargetPath = '{target}'
-$sc.WorkingDirectory = '{working_dir}'
+$sc.TargetPath = '{launch_vbs}'
+$sc.WorkingDirectory = '{install_dir}'
 $sc.Description = 'IngenIA - Chat con Ollama'
 $sc.Save()
 """
@@ -193,6 +258,8 @@ def main():
     print(f"\nNode.js: {node_bin}")
     print(f"npm: {npm}")
 
+    ensure_ollama(os_type, install_root)
+
     print("\nInstalando dependencias...")
     run([npm, "install"], cwd=repo_dir, check=True)
 
@@ -224,22 +291,20 @@ def main():
     else:
         start_dst = install_root / "start.bat"
         start_bat = f"""@echo off
+setlocal enabledelayedexpansion
 set OLLAMA_ORIGINS=*
 cd /d "{install_root}"
-curl -s http://localhost:11434/api/tags >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-  echo Iniciando Ollama...
-  start /b ollama serve
+set NODE={node_bin}
+where curl >nul 2>&1 && curl -s http://localhost:11434/api/tags >nul 2>&1
+if !ERRORLEVEL! neq 0 powershell -NoP -C "try{{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2|Out-Null;exit 0}}catch{{exit 1}}" >nul 2>&1
+if !ERRORLEVEL! neq 0 (
+  if exist "{install_root}\\ollama_portable\\ollama.exe" start /b "" "{install_root}\\ollama_portable\\ollama.exe" serve
+  if exist "ollama_portable\\ollama.exe" start /b "" "ollama_portable\\ollama.exe" serve
   timeout /t 5 /nobreak >nul
 )
-echo.
-echo Iniciando IngenIA...
-start /b "" "{node_bin}" server.mjs
+start /b "" "!NODE!" server.mjs
 timeout /t 3 /nobreak >nul
 start http://localhost:5173
-echo IngenIA abierto en http://localhost:5173
-echo Presiona Ctrl+C para detener el servidor
-pause
 """
         start_dst.write_text(start_bat, encoding="utf-8")
         install_windows(install_root)
