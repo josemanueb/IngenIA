@@ -135,7 +135,9 @@ ensure_ollama() {
         # If extraction failed or zstd not available, try using the binary directly
         if [ ! -f "$OLLAMA_PORTABLE_DIR/ollama" ] && [ ! -f "$OLLAMA_PORTABLE_DIR/bin/ollama" ]; then
           echo "  Extrayendo sin zstd (usando solo tar)..."
-          zstd -d "$zst_archive" -o /tmp/ollama.tar 2>/dev/null && tar -xf /tmp/ollama.tar -C "$OLLAMA_PORTABLE_DIR" 2>/dev/null
+          if command -v zstd &>/dev/null; then
+            zstd -d "$zst_archive" -o /tmp/ollama.tar 2>/dev/null && tar -xf /tmp/ollama.tar -C "$OLLAMA_PORTABLE_DIR" 2>/dev/null
+          fi
           rm -f /tmp/ollama.tar 2>/dev/null || true
         fi
         rm -f "$zst_archive"
@@ -188,18 +190,6 @@ ensure_ollama() {
   local ver=$(ollama -v 2>&1 || true)
   info "Ollama portable listo ($ver)"
 }
-
-echo ""
-echo "  ╔═══════════════════════════════════╗"
-echo "  ║      Instalador de IngenIA        ║"
-echo "  ╚═══════════════════════════════════╝"
-echo ""
-
-HTTP_CMD=$(detect_http_cmd)
-if [ -z "$HTTP_CMD" ]; then
-  error "Se necesita curl o wget"
-fi
-info "Utilidad HTTP: $HTTP_CMD"
 
 ensure_node
 
@@ -379,6 +369,7 @@ cat > "$INSTALL_DIR/uninstall.sh" << 'UNINSTALL'
 #!/bin/bash
 set -euo pipefail
 INSTALL_DIR="$HOME/.local/share/ingenia"
+DESKTOP_DIR="${XDG_DESKTOP_DIR:-$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")}"
 
 echo ""
 echo "  ╔═══════════════════════════════════╗"
@@ -403,8 +394,8 @@ else
   echo "  [!] No se encontraron archivos en $INSTALL_DIR"
 fi
 
-if [ -f "$HOME/Desktop/IngenIA.desktop" ]; then
-  rm -f "$HOME/Desktop/IngenIA.desktop"
+if [ -f "$DESKTOP_DIR/IngenIA.desktop" ]; then
+  rm -f "$DESKTOP_DIR/IngenIA.desktop"
   echo "  [✓] Acceso directo del Escritorio eliminado"
 fi
 

@@ -142,6 +142,16 @@ def ensure_ollama(os_type, install_root):
             if found:
                 shutil.move(str(found[0]), str(ollama_bin))
     archive.unlink()
+    
+    # Verify binary is valid
+    if not ollama_bin.exists():
+        raise RuntimeError(f"No se encontró ollama binario en {ollama_bin}")
+    if os_type == "linux":
+        # Check ELF magic
+        with open(ollama_bin, "rb") as f:
+            if f.read(4) != b"\x7fELF":
+                raise RuntimeError("Binario ollama descargado no es válido")
+    
     env_path = os.environ.copy()
     env_path["PATH"] = str(portable_dir) + os.pathsep + env_path.get("PATH", "")
     subprocess.run([str(ollama_bin), "--version"], env=env_path)
@@ -295,6 +305,11 @@ setlocal enabledelayedexpansion
 set OLLAMA_ORIGINS=*
 cd /d "{install_root}"
 set NODE={node_bin}
+if exist "%~dp0\\node_portable\\node.exe" set NODE=%~dp0\\node_portable\\node.exe
+for /d %%d in ("%~dp0\\node_portable\\*") do if exist "%%d\\node.exe" set NODE=%%d\\node.exe
+if "%NODE%"=="node" (
+  where node >nul 2>&1 || exit /b 1
+)
 where curl >nul 2>&1 && curl -s http://localhost:11434/api/tags >nul 2>&1
 if !ERRORLEVEL! neq 0 powershell -NoP -C "try{{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2|Out-Null;exit 0}}catch{{exit 1}}" >nul 2>&1
 if !ERRORLEVEL! neq 0 (

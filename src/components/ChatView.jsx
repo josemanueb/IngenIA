@@ -384,7 +384,12 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
 
     // Fallback to server TTS via spd-say/espeak
     speakViaServer(text, ttsLang).then(ok => {
-      if (ok) setSpeaking(index)
+      if (ok) {
+        setSpeaking(index)
+        // Server TTS is async with no callback; clear speaking after estimated duration
+        const estimatedDuration = Math.max(3000, text.length * 50)
+        setTimeout(() => setSpeaking(null), estimatedDuration)
+      }
     })
   }
 

@@ -123,9 +123,12 @@ const server = http.createServer((req, res) => {
     return
   }
 
-  const distDir = path.join(__dirname, 'dist')
-  let filePath = path.normalize(path.join(distDir, req.url === '/' ? 'index.html' : req.url))
-  if (!filePath.startsWith(distDir + path.sep) && filePath !== distDir) {
+  const distDir = path.resolve(__dirname, 'dist')
+  let filePath = path.resolve(distDir, req.url === '/' ? 'index.html' : '.' + path.sep + req.url)
+  // Prevent path traversal - resolve both paths to normalize separators
+  const resolvedDistDir = path.resolve(distDir)
+  const resolvedFilePath = path.resolve(filePath)
+  if (!resolvedFilePath.startsWith(resolvedDistDir + path.sep) && resolvedFilePath !== resolvedDistDir) {
     res.writeHead(403, { 'Content-Type': 'text/plain' })
     res.end('Forbidden')
     return

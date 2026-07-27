@@ -1,12 +1,15 @@
 #!/bin/bash
 LOG="$HOME/.local/share/ingenia/ingenia.log"
 
-exec > "$LOG" 2>&1
+# Log to file, show progress on stderr
+exec > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2)
 
 export OLLAMA_ORIGINS="*"
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
+
+echo "Iniciando IngenIA..."
 
 if [ -f "$APP_DIR/node_portable/bin/node" ]; then
   NODE="$APP_DIR/node_portable/bin/node"

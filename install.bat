@@ -202,10 +202,7 @@ echo [OK] start.bat creado
 echo [OK] launch.vbs creado
 
 > "!INSTALL_DIR!\create_shortcut.bat" echo @echo off
->> "!INSTALL_DIR!\create_shortcut.bat" echo set "SHORTCUT=%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat"
->> "!INSTALL_DIR!\create_shortcut.bat" echo echo Creando acceso directo en el Escritorio...
->> "!INSTALL_DIR!\create_shortcut.bat" echo echo @start "" "%%~dp0\launch.vbs" ^> "%%SHORTCUT%%"
->> "!INSTALL_DIR!\create_shortcut.bat" echo if exist "%%SHORTCUT%%" (echo [OK] Acceso directo creado) else (echo [!] Fallo)
+>> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc = Join-Path $desk 'Iniciar IngenIA.bat'; '@start \"\" \"' + $PWD.Path + '\launch.vbs\"' | Out-File -Encoding ascii $sc; if (Test-Path $sc) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
 >> "!INSTALL_DIR!\create_shortcut.bat" echo pause
 echo [OK] create_shortcut.bat creado
 
@@ -225,10 +222,7 @@ echo [OK] create_shortcut.bat creado
 >> "!INSTALL_DIR!\uninstall.bat" echo ^) else (
 >> "!INSTALL_DIR!\uninstall.bat" echo   echo [i] No se encontraron archivos
 >> "!INSTALL_DIR!\uninstall.bat" echo ^)
->> "!INSTALL_DIR!\uninstall.bat" echo if exist "%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat" (
->> "!INSTALL_DIR!\uninstall.bat" echo   del "%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat"
->> "!INSTALL_DIR!\uninstall.bat" echo   echo [OK] Acceso directo eliminado
->> "!INSTALL_DIR!\uninstall.bat" echo ^)
+>> "!INSTALL_DIR!\uninstall.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc1 = Join-Path $desk 'Iniciar IngenIA.bat'; $sc2 = Join-Path $desk 'IngenIA.lnk'; if (Test-Path $sc1) { Remove-Item $sc1; Write-Host '[OK] Acceso directo .bat eliminado' } if (Test-Path $sc2) { Remove-Item $sc2; Write-Host '[OK] Acceso directo .lnk eliminado' }"
 >> "!INSTALL_DIR!\uninstall.bat" echo echo.
 >> "!INSTALL_DIR!\uninstall.bat" echo echo Desinstalacion completada.
 >> "!INSTALL_DIR!\uninstall.bat" echo echo Los modelos de Ollama no fueron eliminados.
@@ -240,14 +234,7 @@ echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-set "SHORTCUT=%USERPROFILE%\Desktop\Iniciar IngenIA.bat"
-echo @start "" "!INSTALL_DIR!\launch.vbs" > "%SHORTCUT%"
-if exist "%SHORTCUT%" (
-    echo [OK] Acceso directo creado en el Escritorio
-) else (
-    echo [!] No se pudo crear el acceso directo
-    echo    Abre manualmente: !INSTALL_DIR!\launch.vbs
-)
+powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc = Join-Path $desk 'Iniciar IngenIA.bat'; '@start \"\" \"' + '%INSTALL_DIR:\=\\%' + '\launch.vbs\"' | Out-File -Encoding ascii $sc; if (Test-Path $sc) { Write-Host \"[OK] Acceso directo creado en el Escritorio\" } else { Write-Host \"[!] No se pudo crear el acceso directo\"; Write-Host \"    Abre manualmente: %INSTALL_DIR%\launch.vbs\" }"
 
 echo.
 echo ============================================
