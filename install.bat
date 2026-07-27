@@ -13,7 +13,7 @@ echo     Instalador de IngenIA
 echo ============================================
 echo.
 
-:: ── Node.js ──
+:: -- Node.js --
 where node >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     for /f "tokens=1" %%v in ('node -v') do echo [OK] Node.js %%v en PATH
@@ -60,7 +60,7 @@ for /f "tokens=1" %%v in ('"!NODE_EXE!" -v') do echo [OK] Node.js %%v
 :have_node
 if not exist "!INSTALL_DIR!" mkdir "!INSTALL_DIR!"
 
-:: ── Ollama ──
+:: -- Ollama --
 where ollama >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     echo [OK] Ollama detectado en PATH
@@ -172,23 +172,19 @@ echo ============================================
 >> "!INSTALL_DIR!\start.bat" echo set "OLLAMA_ORIGINS=*"
 >> "!INSTALL_DIR!\start.bat" echo cd /d "%%~dp0"
 >> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo :: Usar Node.js portable si existe
 >> "!INSTALL_DIR!\start.bat" echo set "NODE=node"
 >> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\node_portable\node.exe" set "NODE=%%~dp0\node_portable\node.exe"
 >> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\node_portable\*") do if exist "%%%%d\node.exe" set "NODE=%%%%d\node.exe"
 >> "!INSTALL_DIR!\start.bat" echo if "%%NODE%%"=="node" (
->> "!INSTALL_DIR!\start.bat" echo   where node ^>nul 2^>^&1 || (
->> "!INSTALL_DIR!\start.bat" echo     exit /b 1
->> "!INSTALL_DIR!\start.bat" echo   ^)
+>> "!INSTALL_DIR!\start.bat" echo   where node ^>nul 2^>^&1 || exit /b 1
 >> "!INSTALL_DIR!\start.bat" echo ^)
 >> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo :: Usar Ollama portable si existe
 >> "!INSTALL_DIR!\start.bat" echo set "OLLAMA=ollama"
 >> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\ollama_portable\ollama.exe" set "OLLAMA=%%~dp0\ollama_portable\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\ollama_portable\*") do if exist "%%%%d\ollama.exe" set "OLLAMA=%%%%d\ollama.exe"
 >> "!INSTALL_DIR!\start.bat" echo.
 >> "!INSTALL_DIR!\start.bat" echo where curl ^>nul 2^>^&1 ^&^& curl -s http://localhost:11434/api/tags ^>nul 2^>^&1
->> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 powershell -NoP -C "try{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2|Out-Null;exit 0}catch{exit 1}" ^>nul 2^>^&1
+>> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 powershell -NoP -C "try{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2^|Out-Null;exit 0}catch{exit 1}" ^>nul 2^>^&1
 >> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 (
 >> "!INSTALL_DIR!\start.bat" echo   if exist "%%OLLAMA%%" (
 >> "!INSTALL_DIR!\start.bat" echo     start /b "" "%%OLLAMA%%" serve
@@ -203,7 +199,15 @@ echo [OK] start.bat creado
 
 > "!INSTALL_DIR!\launch.vbs" echo Set ws = CreateObject("WScript.Shell")
 >> "!INSTALL_DIR!\launch.vbs" echo ws.Run """" ^& ws.CurrentDirectory ^& "\start.bat"", 0, False
-echo [OK] launch.vbs creado (lanza IngenIA sin ventana de terminal)
+echo [OK] launch.vbs creado
+
+> "!INSTALL_DIR!\create_shortcut.bat" echo @echo off
+>> "!INSTALL_DIR!\create_shortcut.bat" echo set "SHORTCUT=%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat"
+>> "!INSTALL_DIR!\create_shortcut.bat" echo echo Creando acceso directo en el Escritorio...
+>> "!INSTALL_DIR!\create_shortcut.bat" echo echo @start "" "%%~dp0\launch.vbs" ^> "%%SHORTCUT%%"
+>> "!INSTALL_DIR!\create_shortcut.bat" echo if exist "%%SHORTCUT%%" (echo [OK] Acceso directo creado) else (echo [!] Fallo)
+>> "!INSTALL_DIR!\create_shortcut.bat" echo pause
+echo [OK] create_shortcut.bat creado
 
 > "!INSTALL_DIR!\uninstall.bat" echo @echo off
 >> "!INSTALL_DIR!\uninstall.bat" echo setlocal enabledelayedexpansion
@@ -221,8 +225,8 @@ echo [OK] launch.vbs creado (lanza IngenIA sin ventana de terminal)
 >> "!INSTALL_DIR!\uninstall.bat" echo ^) else (
 >> "!INSTALL_DIR!\uninstall.bat" echo   echo [i] No se encontraron archivos
 >> "!INSTALL_DIR!\uninstall.bat" echo ^)
->> "!INSTALL_DIR!\uninstall.bat" echo if exist "%%USERPROFILE%%\Desktop\IngenIA.lnk" (
->> "!INSTALL_DIR!\uninstall.bat" echo   del "%%USERPROFILE%%\Desktop\IngenIA.lnk"
+>> "!INSTALL_DIR!\uninstall.bat" echo if exist "%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat" (
+>> "!INSTALL_DIR!\uninstall.bat" echo   del "%%USERPROFILE%%\Desktop\Iniciar IngenIA.bat"
 >> "!INSTALL_DIR!\uninstall.bat" echo   echo [OK] Acceso directo eliminado
 >> "!INSTALL_DIR!\uninstall.bat" echo ^)
 >> "!INSTALL_DIR!\uninstall.bat" echo echo.
@@ -236,21 +240,14 @@ echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-set "VBS=%TEMP%\ingenia_shortcut.vbs"
-> "%VBS%" echo Set ws = CreateObject("WScript.Shell")
->> "%VBS%" echo Set sc = ws.CreateShortcut("%USERPROFILE%\Desktop\IngenIA.lnk")
->> "%VBS%" echo sc.TargetPath = "!INSTALL_DIR!\launch.vbs"
->> "%VBS%" echo sc.WorkingDirectory = "!INSTALL_DIR!"
->> "%VBS%" echo sc.Description = "IngenIA - Chat con Ollama"
->> "%VBS%" echo sc.Save()
-cscript //nologo "%VBS%"
-if !ERRORLEVEL! neq 0 (
-    echo [!] No se pudo crear acceso directo
-    echo    Crealo manualmente apuntando a: !INSTALL_DIR!\launch.vbs
-) else (
+set "SHORTCUT=%USERPROFILE%\Desktop\Iniciar IngenIA.bat"
+echo @start "" "!INSTALL_DIR!\launch.vbs" > "%SHORTCUT%"
+if exist "%SHORTCUT%" (
     echo [OK] Acceso directo creado en el Escritorio
+) else (
+    echo [!] No se pudo crear el acceso directo
+    echo    Abre manualmente: !INSTALL_DIR!\launch.vbs
 )
-del "%VBS%" 2>nul
 
 echo.
 echo ============================================
@@ -258,9 +255,12 @@ echo     INSTALACION COMPLETADA
 echo ============================================
 echo.
 echo  Para iniciar IngenIA:
-echo    Haz doble clic en "IngenIA" en tu Escritorio
+echo    Haz doble clic en "Iniciar IngenIA" en tu Escritorio
 echo.
 echo  Para desinstalar:
 echo    Ejecuta: !INSTALL_DIR!\uninstall.bat
+echo.
+echo  Si el acceso directo no aparece, ejecuta:
+echo    !INSTALL_DIR!\create_shortcut.bat
 echo.
 pause
