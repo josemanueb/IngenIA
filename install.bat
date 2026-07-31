@@ -202,7 +202,7 @@ echo [OK] start.bat creado
 echo [OK] launch.vbs creado
 
 > "!INSTALL_DIR!\create_shortcut.bat" echo @echo off
->> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc = Join-Path $desk 'Iniciar IngenIA.bat'; '@start \"\" \"' + $PWD.Path + '\launch.vbs\"' | Out-File -Encoding ascii $sc; if (Test-Path $sc) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
+>> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%%~dp0\launch.vbs'; $sc.WorkingDirectory = '%%~dp0'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
 >> "!INSTALL_DIR!\create_shortcut.bat" echo pause
 echo [OK] create_shortcut.bat creado
 
@@ -222,7 +222,7 @@ echo [OK] create_shortcut.bat creado
 >> "!INSTALL_DIR!\uninstall.bat" echo ^) else (
 >> "!INSTALL_DIR!\uninstall.bat" echo   echo [i] No se encontraron archivos
 >> "!INSTALL_DIR!\uninstall.bat" echo ^)
->> "!INSTALL_DIR!\uninstall.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc1 = Join-Path $desk 'Iniciar IngenIA.bat'; $sc2 = Join-Path $desk 'IngenIA.lnk'; if (Test-Path $sc1) { Remove-Item $sc1; Write-Host '[OK] Acceso directo .bat eliminado' } if (Test-Path $sc2) { Remove-Item $sc2; Write-Host '[OK] Acceso directo .lnk eliminado' }"
+>> "!INSTALL_DIR!\uninstall.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc1 = Join-Path $desk 'IngenIA.lnk'; if (Test-Path $sc1) { Remove-Item $sc1; Write-Host '[OK] Acceso directo eliminado' }"
 >> "!INSTALL_DIR!\uninstall.bat" echo echo.
 >> "!INSTALL_DIR!\uninstall.bat" echo echo Desinstalacion completada.
 >> "!INSTALL_DIR!\uninstall.bat" echo echo Los modelos de Ollama no fueron eliminados.
@@ -234,7 +234,7 @@ echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc = Join-Path $desk 'Iniciar IngenIA.bat'; '@start \"\" \"' + '%INSTALL_DIR:\=\\%' + '\launch.vbs\"' | Out-File -Encoding ascii $sc; if (Test-Path $sc) { Write-Host \"[OK] Acceso directo creado en el Escritorio\" } else { Write-Host \"[!] No se pudo crear el acceso directo\"; Write-Host \"    Abre manualmente: %INSTALL_DIR%\launch.vbs\" }"
+powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '!INSTALL_DIR!\launch.vbs'; $sc.WorkingDirectory = '!INSTALL_DIR!'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado en el Escritorio' } else { Write-Host '[!] No se pudo crear el acceso directo'; Write-Host '    Abre manualmente: !INSTALL_DIR!\launch.vbs' }"
 
 echo.
 echo ============================================
@@ -242,7 +242,7 @@ echo     INSTALACION COMPLETADA
 echo ============================================
 echo.
 echo  Para iniciar IngenIA:
-echo    Haz doble clic en "Iniciar IngenIA" en tu Escritorio
+echo    Haz doble clic en "IngenIA" en tu Escritorio
 echo.
 echo  Para desinstalar:
 echo    Ejecuta: !INSTALL_DIR!\uninstall.bat

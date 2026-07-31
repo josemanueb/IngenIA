@@ -193,6 +193,12 @@ ensure_ollama() {
 
 ensure_node
 
+HTTP_CMD=$(detect_http_cmd)
+if [ -z "$HTTP_CMD" ]; then
+  error "Se necesita curl o wget"
+fi
+info "Utilidad HTTP: $HTTP_CMD"
+
 if ! command -v npm &>/dev/null; then
   error "npm no encontrado (portable defectuoso)"
 fi
