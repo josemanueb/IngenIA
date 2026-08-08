@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { pullModel } from '../services/ollama'
+import { pullModel, listModels } from '../services/ollama'
 import { getStaticModels, fetchLibraryModels } from '../services/ollamaLibrary'
 
 const getTypeColor = (type) => {
@@ -39,6 +39,17 @@ export default function ModelSelector({ onComplete }) {
     setAvailableModels(filtered)
   }, [searchTerm])
 
+  useEffect(() => {
+    const checkInstalled = async () => {
+      try {
+        const installed = await listModels()
+        const names = new Set(installed.map(m => m.name))
+        setCompleted(prev => [...new Set([...prev, ...getStaticModels().filter(m => names.has(m.name)).map(m => m.name)])])
+      } catch {}
+    }
+    checkInstalled()
+  }, [])
+
   const handleFetchMore = async () => {
     setLoadingLib(true)
     setLibError(null)
@@ -71,6 +82,7 @@ export default function ModelSelector({ onComplete }) {
   const startDownload = async () => {
     if (selected.length === 0) return
 
+    let allOk = true
     for (const modelName of selected) {
       if (completed.includes(modelName)) continue
       setDownloading(modelName)
@@ -87,12 +99,13 @@ export default function ModelSelector({ onComplete }) {
         })
         setCompleted(prev => [...prev, modelName])
       } catch (err) {
+        allOk = false
         setError(`Error descargando ${modelName}: ${err.message}`)
       }
     }
 
     setDownloading(null)
-    onComplete()
+    if (allOk) onComplete()
   }
 
   return (
