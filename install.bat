@@ -13,6 +13,10 @@ echo     Instalador de IngenIA
 echo ============================================
 echo.
 
+:: Clean previous installation BEFORE downloading portables,
+:: otherwise the portables would be deleted along with the app
+if exist "!INSTALL_DIR!" rmdir /s /q "!INSTALL_DIR!"
+
 :: -- Node.js --
 where node >nul 2>&1
 if !ERRORLEVEL! equ 0 (
@@ -105,14 +109,6 @@ set "PATH=!OLLAMA_DIR!;!PATH!"
 
 :have_ollama
 
-:: Copy portables to install dir
-if exist "!PORTABLE_DIR!" (
-    xcopy /s /e /y /q "!PORTABLE_DIR!" "!INSTALL_DIR!\node_portable\" >nul
-)
-if exist "!OLLAMA_DIR!" (
-    xcopy /s /e /y /q "!OLLAMA_DIR!" "!INSTALL_DIR!\ollama_portable\" >nul
-)
-
 echo.
 echo ============================================
 echo  Instalando dependencias y compilando
@@ -140,20 +136,12 @@ echo.
 echo ============================================
 echo  Instalando en !INSTALL_DIR!
 echo ============================================
-if exist "!INSTALL_DIR!" rmdir /s /q "!INSTALL_DIR!"
 mkdir "!INSTALL_DIR!" 2>nul
 
 xcopy /s /e /y /q "!SCRIPT_DIR!dist" "!INSTALL_DIR!\dist\" >nul
 xcopy /s /e /y /q "!SCRIPT_DIR!public" "!INSTALL_DIR!\public\" >nul
 copy /y "!SCRIPT_DIR!package.json" "!INSTALL_DIR!\" >nul
 copy /y "!SCRIPT_DIR!server.mjs" "!INSTALL_DIR!\" >nul
-
-if exist "!SCRIPT_DIR!\node_portable" (
-    xcopy /s /e /y /q "!SCRIPT_DIR!\node_portable" "!INSTALL_DIR!\node_portable\" >nul
-)
-if exist "!SCRIPT_DIR!\ollama_portable" (
-    xcopy /s /e /y /q "!SCRIPT_DIR!\ollama_portable" "!INSTALL_DIR!\ollama_portable\" >nul
-)
 
 if !ERRORLEVEL! neq 0 (
     echo [ERROR] Fallo al copiar archivos
@@ -167,133 +155,26 @@ echo ============================================
 echo  Creando scripts...
 echo ============================================
 
-> "!INSTALL_DIR!\start.bat" echo @echo off
->> "!INSTALL_DIR!\start.bat" echo setlocal enabledelayedexpansion
->> "!INSTALL_DIR!\start.bat" echo set "OLLAMA_ORIGINS=*"
->> "!INSTALL_DIR!\start.bat" echo cd /d "%%~dp0"
->> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo set "NODE=node"
->> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\node_portable\node.exe" set "NODE=%%~dp0\node_portable\node.exe"
->> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\node_portable\*") do if exist "%%%%d\node.exe" set "NODE=%%%%d\node.exe"
->> "!INSTALL_DIR!\start.bat" echo if "%%NODE%%"=="node" (
->> "!INSTALL_DIR!\start.bat" echo   where node ^>nul 2^>^&1 || exit /b 1
->> "!INSTALL_DIR!\start.bat" echo ^)
->> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo set "OLLAMA=ollama"
->> "!INSTALL_DIR!\start.bat" echo if exist "%%~dp0\ollama_portable\ollama.exe" set "OLLAMA=%%~dp0\ollama_portable\ollama.exe"
->> "!INSTALL_DIR!\start.bat" echo for /d %%%%d in ("%%~dp0\ollama_portable\*") do if exist "%%%%d\ollama.exe" set "OLLAMA=%%%%d\ollama.exe"
->> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo where curl ^>nul 2^>^&1 ^&^& curl -s http://localhost:11434/api/tags ^>nul 2^>^&1
->> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 powershell -NoP -C "try{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2^|Out-Null;exit 0}catch{exit 1}" ^>nul 2^>^&1
->> "!INSTALL_DIR!\start.bat" echo if %%ERRORLEVEL%% neq 0 (
->> "!INSTALL_DIR!\start.bat" echo   if exist "%%OLLAMA%%" (
->> "!INSTALL_DIR!\start.bat" echo     start /b "" "%%OLLAMA%%" serve
->> "!INSTALL_DIR!\start.bat" echo     timeout /t 5 /nobreak ^>nul
->> "!INSTALL_DIR!\start.bat" echo   ^)
->> "!INSTALL_DIR!\start.bat" echo ^)
->> "!INSTALL_DIR!\start.bat" echo.
->> "!INSTALL_DIR!\start.bat" echo start /b "" "%%NODE%%" server.mjs
->> "!INSTALL_DIR!\start.bat" echo timeout /t 3 /nobreak ^>nul
->> "!INSTALL_DIR!\start.bat" echo start http://localhost:5173
+copy /y "!SCRIPT_DIR!start.bat" "!INSTALL_DIR!\start.bat" >nul
 echo [OK] start.bat creado
 
-> "!INSTALL_DIR!\launch.vbs" echo Set ws = CreateObject("WScript.Shell")
->> "!INSTALL_DIR!\launch.vbs" echo ws.Run """" ^& ws.CurrentDirectory ^& "\start.bat"", 0, False
+copy /y "!SCRIPT_DIR!launch.vbs" "!INSTALL_DIR!\launch.vbs" >nul
 echo [OK] launch.vbs creado
 
-echo [OK] create_shortcut.bat creado
-
-> "!INSTALL_DIR!\fix_shortcut.ps1" echo <# 
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo .SYNOPSIS
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Crea o repara el acceso directo de IngenIA en el Escritorio de Windows.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo .DESCRIPTION
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Este script crea un acceso directo (.lnk) correcto para IngenIA.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Se ejecuta directamente haciendo doble clic o desde PowerShell.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Debe ejecutarse desde la carpeta de instalacion de IngenIA (donde esta launch.vbs).
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo #>
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Detectar carpeta de instalacion actual
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $installDir = $scriptDir
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Verificar que existan los archivos necesarios
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $launchVbs = Join-Path $installDir "launch.vbs"
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $iconPath = Join-Path $installDir "public\icon.ico"
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo if (-not (Test-Path $launchVbs)) ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] ERROR: No se encuentra launch.vbs en $installDir" -ForegroundColor Red
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "    Ejecuta este script desde la carpeta de instalacion de IngenIA" -ForegroundColor Yellow
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Read-Host "Presiona Enter para salir"
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     exit 1
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo if (-not (Test-Path $iconPath)) ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] Advertencia: No se encuentra icon.ico, se usara icono por defecto" -ForegroundColor Yellow
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $iconPath = $null
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Carpeta del Escritorio
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $desktop = [Environment]::GetFolderPath('Desktop')
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo $shortcutPath = Join-Path $desktop "IngenIA.lnk"
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo Write-Host "Creando acceso directo en: $shortcutPath" -ForegroundColor Cyan
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo Write-Host "Objetivo: $launchVbs" -ForegroundColor Cyan
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo try ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $ws = New-Object -ComObject WScript.Shell
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc = $ws.CreateShortcut($shortcutPath)
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.TargetPath = $launchVbs
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.WorkingDirectory = $installDir
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.Description = "IngenIA - Chat con Ollama"
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     if ($iconPath) ^{ $sc.IconLocation = $iconPath ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.Save()
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     if (Test-Path $shortcutPath) ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo         Write-Host "[OK] Acceso directo creado correctamente en el Escritorio" -ForegroundColor Green
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     ^} else ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo         Write-Host "[!] El acceso directo no se creo correctamente" -ForegroundColor Red
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo catch ^{
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] Error al crear acceso directo: $_" -ForegroundColor Red
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
->> "!INSTALL_DIR!\fix_shortcut.ps1" echo Read-Host "Presiona Enter para salir"
+copy /y "!SCRIPT_DIR!fix_shortcut.ps1" "!INSTALL_DIR!\fix_shortcut.ps1" >nul
 echo [OK] fix_shortcut.ps1 creado
 
-> "!INSTALL_DIR!\fix_shortcut.bat" echo @echo off
->> "!INSTALL_DIR!\fix_shortcut.bat" echo powershell -ExecutionPolicy Bypass -File "%%~dp0fix_shortcut.ps1"
+copy /y "!SCRIPT_DIR!fix_shortcut.bat" "!INSTALL_DIR!\fix_shortcut.bat" >nul
 echo [OK] fix_shortcut.bat creado
 
-> "!INSTALL_DIR!\uninstall.bat" echo @echo off
->> "!INSTALL_DIR!\uninstall.bat" echo setlocal enabledelayedexpansion
->> "!INSTALL_DIR!\uninstall.bat" echo echo.
->> "!INSTALL_DIR!\uninstall.bat" echo echo ============================================
->> "!INSTALL_DIR!\uninstall.bat" echo echo     Desinstalando IngenIA
->> "!INSTALL_DIR!\uninstall.bat" echo echo ============================================
->> "!INSTALL_DIR!\uninstall.bat" echo echo.
->> "!INSTALL_DIR!\uninstall.bat" echo set "INSTALL_DIR=%%LOCALAPPDATA%%\IngenIA"
->> "!INSTALL_DIR!\uninstall.bat" echo taskkill /f /im node.exe ^>nul 2^>^&1
->> "!INSTALL_DIR!\uninstall.bat" echo timeout /t 2 /nobreak ^>nul
->> "!INSTALL_DIR!\uninstall.bat" echo if exist "%%INSTALL_DIR%%" (
->> "!INSTALL_DIR!\uninstall.bat" echo   rmdir /s /q "%%INSTALL_DIR%%"
->> "!INSTALL_DIR!\uninstall.bat" echo   echo [OK] Archivos eliminados
->> "!INSTALL_DIR!\uninstall.bat" echo ^) else (
->> "!INSTALL_DIR!\uninstall.bat" echo   echo [i] No se encontraron archivos
->> "!INSTALL_DIR!\uninstall.bat" echo ^)
->> "!INSTALL_DIR!\uninstall.bat" echo powershell -Command "$desk = [Environment]::GetFolderPath('Desktop'); $sc1 = Join-Path $desk 'IngenIA.lnk'; if (Test-Path $sc1) { Remove-Item $sc1; Write-Host '[OK] Acceso directo eliminado' }"
->> "!INSTALL_DIR!\uninstall.bat" echo echo.
->> "!INSTALL_DIR!\uninstall.bat" echo echo Desinstalacion completada.
->> "!INSTALL_DIR!\uninstall.bat" echo echo Los modelos de Ollama no fueron eliminados.
->> "!INSTALL_DIR!\uninstall.bat" echo echo.
->> "!INSTALL_DIR!\uninstall.bat" echo pause
+copy /y "!SCRIPT_DIR!uninstall.bat" "!INSTALL_DIR!\uninstall.bat" >nul
 echo [OK] uninstall.bat creado
 
 echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%INSTALL_DIR:\=\\%\launch.vbs'; $sc.WorkingDirectory = '%INSTALL_DIR:\=\\%'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.IconLocation = '%INSTALL_DIR:\=\\%\public\icon.ico'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado en el Escritorio' } else { Write-Host '[!] No se pudo crear el acceso directo'; Write-Host '    Abre manualmente: %INSTALL_DIR%\launch.vbs' }"
+powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut((Join-Path $desk 'IngenIA.lnk')); $sc.TargetPath = '%INSTALL_DIR:\=\\%\launch.vbs'; $sc.WorkingDirectory = '%INSTALL_DIR:\=\\%'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.IconLocation = '%INSTALL_DIR:\=\\%\public\icon.ico'; $sc.Save(); if (Test-Path (Join-Path $desk 'IngenIA.lnk')) { Write-Host '[OK] Acceso directo creado en el Escritorio' } else { Write-Host '[!] No se pudo crear el acceso directo'; Write-Host '    Ejecuta: ' + (Join-Path '%INSTALL_DIR:\=\\%' 'fix_shortcut.bat') }"
 
 echo.
 echo ============================================
@@ -307,6 +188,6 @@ echo  Para desinstalar:
 echo    Ejecuta: !INSTALL_DIR!\uninstall.bat
 echo.
 echo  Si el acceso directo no aparece, ejecuta:
-echo    !INSTALL_DIR!\create_shortcut.bat
+echo    !INSTALL_DIR!\fix_shortcut.bat
 echo.
 pause

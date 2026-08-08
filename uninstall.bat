@@ -18,8 +18,9 @@ if exist "!INSTALL_DIR!" (
 )
 
 echo Eliminando acceso directo del Escritorio...
-if exist "%USERPROFILE%\Desktop\IngenIA.lnk" (
-    del "%USERPROFILE%\Desktop\IngenIA.lnk"
+for /f "usebackq delims=" %%d in (`powershell -NoP -C "[Environment]::GetFolderPath('Desktop')"`) do set "DESKTOP=%%d"
+if exist "!DESKTOP!\IngenIA.lnk" (
+    del "!DESKTOP!\IngenIA.lnk"
     echo [OK] Acceso directo eliminado
 ) else (
     echo [i] No se encontro acceso directo

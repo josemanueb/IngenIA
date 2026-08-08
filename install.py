@@ -215,21 +215,20 @@ StartupNotify=true
     ensure_tts_linux()
 
 
-def install_windows(install_dir):
+def install_windows(install_dir, repo_dir):
     desktop_dir = Path(os.environ.get("USERPROFILE", "")) / "Desktop"
     desktop_dir.mkdir(parents=True, exist_ok=True)
 
-    launch_vbs = install_dir / "launch.vbs"
-    launch_vbs.write_text(
-        'Set ws = CreateObject("WScript.Shell")\n'
-        'ws.Run """" & ws.CurrentDirectory & "\\start.bat""", 0, False\n',
-        encoding="utf-8",
-    )
+    # Copy static scripts from the repo (authoritative versions)
+    for name in ("launch.vbs", "fix_shortcut.ps1", "fix_shortcut.bat", "uninstall.bat"):
+        src = repo_dir / name
+        if src.exists():
+            shutil.copy2(src, install_dir / name)
 
     shortcut = desktop_dir / "IngenIA.lnk"
     # Use PowerShell with proper path escaping
     install_dir_str = str(install_dir).replace('\\', '\\\\')
-    launch_vbs_str = str(launch_vbs).replace('\\', '\\\\')
+    launch_vbs_str = str(install_dir / "launch.vbs").replace('\\', '\\\\')
     ps = f"""
 $ws = New-Object -ComObject WScript.Shell
 $desk = [Environment]::GetFolderPath('Desktop')
@@ -245,6 +244,7 @@ $sc.Save()
         print(f"Acceso directo creado en: {shortcut}")
     else:
         print(f"No se pudo crear el acceso directo automáticamente: {result.stderr}")
+        print(f"  Ejecuta manualmente: {install_dir / 'fix_shortcut.bat'}")
 
 
 def main():
@@ -288,8 +288,15 @@ def main():
         sys.exit(1)
 
     print("\nCopiando archivos...")
-    if install_root.exists():
-        shutil.rmtree(install_root, ignore_errors=True)
+    # Preserve portable runtimes (node_portable/ollama_portable) that may
+    # already be downloaded, only replace the app files.
+    for sub in ("dist", "public", "node_modules", "package.json", "server.mjs", "start.bat", "start.sh"):
+        target = install_root / sub
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target, ignore_errors=True)
+            else:
+                target.unlink(missing_ok=True)
     install_root.mkdir(parents=True, exist_ok=True)
     shutil.copytree(dist, install_root / "dist")
     shutil.copytree(public, install_root / "public")
@@ -327,7 +334,7 @@ timeout /t 3 /nobreak >nul
 start http://localhost:5173
 """
         start_dst.write_text(start_bat, encoding="utf-8")
-        install_windows(install_root)
+        install_windows(install_root, repo_dir)
 
     print("\n" + "=" * 55)
     print("  Instalación completada")
