@@ -1814,17 +1814,16 @@ html {
 }
 
 .watermark {
-  position: fixed;
-  bottom: 8px;
-  right: 8px;
-  z-index: 999;
-  opacity: 0.5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
   transition: opacity 0.2s;
   line-height: 0;
 }
 .watermark:hover { opacity: 1; }
 .watermark img {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
 }

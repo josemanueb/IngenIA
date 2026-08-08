@@ -444,6 +444,9 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
           </button>
         </div>
         <div className="header-actions">
+          <a href="https://github.com/josemanueb" target="_blank" rel="noopener noreferrer" className="watermark" title="JMB">
+            <img src="/icon-jmb.png" alt="JMB" />
+          </a>
           <button
             className={`tts-lang-btn ${ttsLang === 'es-ES' ? 'active' : ''}`}
             onClick={() => setTtsLang(ttsLang === 'es-ES' ? 'en-US' : 'es-ES')}

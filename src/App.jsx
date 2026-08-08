@@ -55,7 +55,7 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState(null)
   const [conversationId, setConversationId] = useState(null)
   const [historyTrigger, setHistoryTrigger] = useState(0)
-  const [fontSize, setFontSize] = useState(14)
+  const [fontSize, setFontSize] = useState(16)
 
   const loadModels = useCallback(async () => {
     const running = await checkOllamaStatus()
@@ -235,9 +235,6 @@ export default function App() {
         fontSize={fontSize}
         onFontSizeChange={setFontSize}
       />
-      <a href="https://github.com/josemanueb" target="_blank" className="watermark" title="JMB">
-        <img src="/icon-jmb.png" alt="JMB" />
-      </a>
     </div>
   )
 }
