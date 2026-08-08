@@ -227,19 +227,24 @@ def install_windows(install_dir):
     )
 
     shortcut = desktop_dir / "IngenIA.lnk"
+    # Use PowerShell with proper path escaping
+    install_dir_str = str(install_dir).replace('\\', '\\\\')
+    launch_vbs_str = str(launch_vbs).replace('\\', '\\\\')
     ps = f"""
 $ws = New-Object -ComObject WScript.Shell
-$sc = $ws.CreateShortcut('{shortcut}')
-$sc.TargetPath = '{launch_vbs}'
-$sc.WorkingDirectory = '{install_dir}'
+$desk = [Environment]::GetFolderPath('Desktop')
+$sc = $ws.CreateShortcut([System.IO.Path]::Combine($desk, 'IngenIA.lnk'))
+$sc.TargetPath = '{launch_vbs_str}'
+$sc.WorkingDirectory = '{install_dir_str}'
 $sc.Description = 'IngenIA - Chat con Ollama'
+$sc.IconLocation = '{install_dir_str}\\public\\icon.ico'
 $sc.Save()
 """
-    subprocess.run(["powershell", "-Command", ps], check=False)
+    result = subprocess.run(["powershell", "-Command", ps], check=False, capture_output=True, text=True)
     if shortcut.exists():
         print(f"Acceso directo creado en: {shortcut}")
     else:
-        print("No se pudo crear el acceso directo automáticamente.")
+        print(f"No se pudo crear el acceso directo automáticamente: {result.stderr}")
 
 
 def main():

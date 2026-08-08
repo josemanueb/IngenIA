@@ -1,8 +1,8 @@
 #!/bin/bash
 LOG="$HOME/.local/share/ingenia/ingenia.log"
 
-# Log to file, show progress on stderr
-exec > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2)
+# Log to file, also show progress on terminal
+exec > >(tee -a "$LOG") 2>&1
 
 export OLLAMA_ORIGINS="*"
 
@@ -70,9 +70,13 @@ wait_for_url "http://localhost:5173" 30 || true
 xdg-open http://localhost:5173 2>/dev/null || true
 
 cleanup() {
-  kill $SERVER_PID 2>/dev/null || true
-  [ -n "$OLAMA_PID" ] && kill "$OLAMA_PID" 2>/dev/null || true
+  if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+    kill "$SERVER_PID" 2>/dev/null || true
+  fi
+  if [ -n "$OLAMA_PID" ] && kill -0 "$OLAMA_PID" 2>/dev/null; then
+    kill "$OLAMA_PID" 2>/dev/null || true
+  fi
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 wait $SERVER_PID

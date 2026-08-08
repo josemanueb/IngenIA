@@ -202,7 +202,7 @@ echo [OK] start.bat creado
 echo [OK] launch.vbs creado
 
 > "!INSTALL_DIR!\create_shortcut.bat" echo @echo off
->> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%%~dp0\launch.vbs'; $sc.WorkingDirectory = '%%~dp0'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
+>> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%~dp0\launch.vbs'; $sc.WorkingDirectory = '%~dp0'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
 >> "!INSTALL_DIR!\create_shortcut.bat" echo pause
 echo [OK] create_shortcut.bat creado
 
@@ -234,7 +234,7 @@ echo.
 echo ============================================
 echo  Creando acceso directo en el Escritorio...
 echo ============================================
-powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '!INSTALL_DIR!\launch.vbs'; $sc.WorkingDirectory = '!INSTALL_DIR!'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado en el Escritorio' } else { Write-Host '[!] No se pudo crear el acceso directo'; Write-Host '    Abre manualmente: !INSTALL_DIR!\launch.vbs' }"
+powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%INSTALL_DIR:\=\\%\launch.vbs'; $sc.WorkingDirectory = '%INSTALL_DIR:\=\\%'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.IconLocation = '%INSTALL_DIR:\=\\%\public\icon.ico'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado en el Escritorio' } else { Write-Host '[!] No se pudo crear el acceso directo'; Write-Host '    Abre manualmente: %INSTALL_DIR%\launch.vbs' }"
 
 echo.
 echo ============================================

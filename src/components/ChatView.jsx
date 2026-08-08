@@ -336,6 +336,12 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
       return
     }
 
+    // Clear any existing server TTS timeout
+    if (window.__ttsTimeouts && window.__ttsTimeouts[index]) {
+      clearTimeout(window.__ttsTimeouts[index])
+      delete window.__ttsTimeouts[index]
+    }
+
     if (speaking === index) {
       window.speechSynthesis.cancel()
       setSpeaking(null)
@@ -385,10 +391,15 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     // Fallback to server TTS via spd-say/espeak
     speakViaServer(text, ttsLang).then(ok => {
       if (ok) {
+        setTtsMode('srv')
         setSpeaking(index)
-        // Server TTS is async with no callback; clear speaking after estimated duration
-        const estimatedDuration = Math.max(3000, text.length * 50)
-        setTimeout(() => setSpeaking(null), estimatedDuration)
+        // Server TTS is async with no callback; clear speaking after max duration
+        // Use a reasonable max timeout (30s) to prevent stuck state
+        const maxDuration = 30000
+        const timeoutId = setTimeout(() => setSpeaking(null), maxDuration)
+        // Store timeout ID for potential cleanup
+        if (!window.__ttsTimeouts) window.__ttsTimeouts = {}
+        window.__ttsTimeouts[index] = timeoutId
       }
     })
   }
