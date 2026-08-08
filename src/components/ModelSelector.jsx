@@ -133,11 +133,12 @@ export default function ModelSelector({ onComplete }) {
             const isDownloading = downloading === model.name
             const isCompleted = completed.includes(model.name)
             const pct = progress[model.name] || 0
+            const isQueued = isSelected && !!downloading && !isCompleted && !isDownloading
 
             return (
               <button
                 key={model.name}
-                className={`model-selector-card ${isSelected ? 'selected' : ''} ${isCompleted ? 'completed' : ''} ${isDownloading ? 'downloading' : ''}`}
+                className={`model-selector-card ${isSelected ? 'selected' : ''} ${isCompleted ? 'completed' : ''} ${isDownloading ? 'downloading' : ''} ${isQueued ? 'queued' : ''}`}
                 onClick={() => !downloading && !isCompleted && toggleModel(model.name)}
                 disabled={!!downloading || isCompleted}
               >
@@ -157,6 +158,11 @@ export default function ModelSelector({ onComplete }) {
                       <div className="progress-fill" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="progress-text">{pct}%</span>
+                  </div>
+                )}
+                {isQueued && (
+                  <div className="model-card-progress queued">
+                    <span className="progress-text">En cola...</span>
                   </div>
                 )}
               </button>

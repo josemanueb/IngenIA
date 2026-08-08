@@ -19,6 +19,7 @@ export default function Sidebar({
   historyTrigger,
   onSelectHistory,
   onDeleteHistory,
+  onOpenModelSelector,
 }) {
   const [recentConvs, setRecentConvs] = useState([])
 
@@ -124,6 +125,10 @@ export default function Sidebar({
           ⚙️
         </button>
       </nav>
+
+      <button className="sidebar-download-btn" onClick={onOpenModelSelector}>
+        ⬇️ Descargar modelos
+      </button>
 
       <div className="search-container">
         <input

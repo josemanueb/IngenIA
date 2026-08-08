@@ -156,6 +156,25 @@ body {
   border-color: var(--accent);
 }
 
+.sidebar-download-btn {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 10px 12px 0;
+  padding: 9px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sidebar-download-btn:hover {
+  background: var(--bg-hover);
+}
+
 /* ── Search ── */
 .search-container {
   padding: 12px;
@@ -1729,6 +1748,11 @@ html {
   color: var(--text-secondary);
   font-weight: 600;
   min-width: 36px;
+}
+
+.model-card-progress.queued .progress-text {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .model-selector-error {

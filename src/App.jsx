@@ -149,6 +149,10 @@ export default function App() {
     loadModels()
   }
 
+  const handleOpenModelSelector = () => {
+    setShowModelSelector(true)
+  }
+
   const handleModelSelect = async (modelName) => {
     setSelectedModel(modelName)
     setView('chat')
@@ -207,6 +211,7 @@ export default function App() {
           deleteConversation(convId)
           setHistoryTrigger(t => t + 1)
         }}
+        onOpenModelSelector={handleOpenModelSelector}
       />
       <main className="main-content">
         {view === 'chat' ? (
