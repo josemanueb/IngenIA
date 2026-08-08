@@ -23,6 +23,9 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   const imageInputRef = useRef(null)
   const currentAssistantIndexRef = useRef(-1)
   const saveTimerRef = useRef(null)
+  const ttsQueueRef = useRef([])
+  const ttsStoppedRef = useRef(false)
+  const ttsVoiceRef = useRef(null)
 
   const syncMessages = useCallback((msgs) => {
     messagesRef.current = msgs
@@ -82,6 +85,8 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     return () => {
       if (recognitionRef.current) recognitionRef.current.abort()
       if (abortRef.current) abortRef.current.abort()
+      ttsStoppedRef.current = true
+      ttsQueueRef.current = []
       window.speechSynthesis?.cancel()
     }
   }, [])
@@ -330,6 +335,42 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     }
   }
 
+  const splitText = (text) => {
+    const maxLen = 180
+    const parts = []
+    const sentences = text.match(/[^.!?。！？]+[.!?。！？]+/g) || [text]
+    let current = ''
+    for (const s of sentences) {
+      const trimmed = s.trim()
+      if (!trimmed) continue
+      if ((current + trimmed).length > maxLen && current) {
+        parts.push(current)
+        current = trimmed
+      } else {
+        current += trimmed
+      }
+    }
+    if (current) parts.push(current)
+    return parts.length > 0 ? parts : [text]
+  }
+
+  const speakWebChunk = (index) => {
+    const parts = ttsQueueRef.current
+    const part = parts.shift()
+    if (ttsStoppedRef.current || !part) {
+      ttsStoppedRef.current = false
+      setSpeaking(null)
+      return
+    }
+    const utterance = new SpeechSynthesisUtterance(part)
+    utterance.lang = ttsLang
+    utterance.rate = 1
+    if (ttsVoiceRef.current) utterance.voice = ttsVoiceRef.current
+    utterance.onend = () => speakWebChunk(index)
+    utterance.onerror = () => speakWebChunk(index)
+    window.speechSynthesis.speak(utterance)
+  }
+
   const speakText = (text, index) => {
     if (!('speechSynthesis' in window)) {
       setTtsError('Tu navegador no soporta síntesis de voz')
@@ -343,11 +384,13 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     }
 
     if (speaking === index) {
+      ttsStoppedRef.current = true
       window.speechSynthesis.cancel()
       setSpeaking(null)
       return
     }
 
+    ttsStoppedRef.current = false
     window.speechSynthesis.cancel()
 
     let voices = ttsVoices
@@ -362,10 +405,6 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
     // Use Web Speech API if voices available
     if (voices.length > 0 && available.length > 0) {
       setTtsMode('web')
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = ttsLang
-      utterance.rate = 1
-
       const femaleVoice = available.find(v =>
         v.name.toLowerCase().includes('femenina') ||
         v.name.toLowerCase().includes('female') ||
@@ -376,15 +415,11 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
         v.name.includes('♀') ||
         v.name.includes('Female')
       )
-
-      if (femaleVoice) utterance.voice = femaleVoice
-      else utterance.voice = available[0]
-
-      utterance.onend = () => setSpeaking(null)
-      utterance.onerror = () => setSpeaking(null)
+      ttsVoiceRef.current = femaleVoice || available[0]
+      ttsQueueRef.current = splitText(text)
       setSpeaking(index)
       setTtsError(null)
-      window.speechSynthesis.speak(utterance)
+      speakWebChunk(index)
       return
     }
 
@@ -394,10 +429,8 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
         setTtsMode('srv')
         setSpeaking(index)
         // Server TTS is async with no callback; clear speaking after max duration
-        // Use a reasonable max timeout (30s) to prevent stuck state
-        const maxDuration = 30000
+        const maxDuration = Math.max(30000, text.length * 80)
         const timeoutId = setTimeout(() => setSpeaking(null), maxDuration)
-        // Store timeout ID for potential cleanup
         if (!window.__ttsTimeouts) window.__ttsTimeouts = {}
         window.__ttsTimeouts[index] = timeoutId
       }
