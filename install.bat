@@ -201,10 +201,69 @@ echo [OK] start.bat creado
 >> "!INSTALL_DIR!\launch.vbs" echo ws.Run """" ^& ws.CurrentDirectory ^& "\start.bat"", 0, False
 echo [OK] launch.vbs creado
 
-> "!INSTALL_DIR!\create_shortcut.bat" echo @echo off
->> "!INSTALL_DIR!\create_shortcut.bat" echo powershell -Command "$ws = New-Object -ComObject WScript.Shell; $desk = [Environment]::GetFolderPath('Desktop'); $sc = $ws.CreateShortcut(Join-Path $desk 'IngenIA.lnk'); $sc.TargetPath = '%~dp0\launch.vbs'; $sc.WorkingDirectory = '%~dp0'; $sc.Description = 'IngenIA - Chat con Ollama'; $sc.Save(); if (Test-Path $sc.TargetPath) { Write-Host '[OK] Acceso directo creado' } else { Write-Host '[!] Fallo' }"
->> "!INSTALL_DIR!\create_shortcut.bat" echo pause
 echo [OK] create_shortcut.bat creado
+
+> "!INSTALL_DIR!\fix_shortcut.ps1" echo <# 
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo .SYNOPSIS
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Crea o repara el acceso directo de IngenIA en el Escritorio de Windows.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo .DESCRIPTION
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Este script crea un acceso directo (.lnk) correcto para IngenIA.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Se ejecuta directamente haciendo doble clic o desde PowerShell.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Debe ejecutarse desde la carpeta de instalacion de IngenIA (donde esta launch.vbs).
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo #>
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Detectar carpeta de instalacion actual
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $installDir = $scriptDir
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Verificar que existan los archivos necesarios
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $launchVbs = Join-Path $installDir "launch.vbs"
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $iconPath = Join-Path $installDir "public\icon.ico"
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo if (-not (Test-Path $launchVbs)) ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] ERROR: No se encuentra launch.vbs en $installDir" -ForegroundColor Red
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "    Ejecuta este script desde la carpeta de instalacion de IngenIA" -ForegroundColor Yellow
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Read-Host "Presiona Enter para salir"
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     exit 1
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo if (-not (Test-Path $iconPath)) ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] Advertencia: No se encuentra icon.ico, se usara icono por defecto" -ForegroundColor Yellow
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $iconPath = $null
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo # Carpeta del Escritorio
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $desktop = [Environment]::GetFolderPath('Desktop')
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo $shortcutPath = Join-Path $desktop "IngenIA.lnk"
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo Write-Host "Creando acceso directo en: $shortcutPath" -ForegroundColor Cyan
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo Write-Host "Objetivo: $launchVbs" -ForegroundColor Cyan
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo try ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $ws = New-Object -ComObject WScript.Shell
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc = $ws.CreateShortcut($shortcutPath)
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.TargetPath = $launchVbs
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.WorkingDirectory = $installDir
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.Description = "IngenIA - Chat con Ollama"
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     if ($iconPath) ^{ $sc.IconLocation = $iconPath ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     $sc.Save()
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     if (Test-Path $shortcutPath) ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo         Write-Host "[OK] Acceso directo creado correctamente en el Escritorio" -ForegroundColor Green
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     ^} else ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo         Write-Host "[!] El acceso directo no se creo correctamente" -ForegroundColor Red
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo catch ^{
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo     Write-Host "[!] Error al crear acceso directo: $_" -ForegroundColor Red
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo ^}
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo.
+>> "!INSTALL_DIR!\fix_shortcut.ps1" echo Read-Host "Presiona Enter para salir"
+echo [OK] fix_shortcut.ps1 creado
+
+> "!INSTALL_DIR!\fix_shortcut.bat" echo @echo off
+>> "!INSTALL_DIR!\fix_shortcut.bat" echo powershell -ExecutionPolicy Bypass -File "%%~dp0fix_shortcut.ps1"
+echo [OK] fix_shortcut.bat creado
 
 > "!INSTALL_DIR!\uninstall.bat" echo @echo off
 >> "!INSTALL_DIR!\uninstall.bat" echo setlocal enabledelayedexpansion
