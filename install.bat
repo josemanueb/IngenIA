@@ -58,7 +58,9 @@ if not exist "!NODE_EXE!" (
 )
 
 echo [OK] Node.js portable descargado
-set "PATH=!PORTABLE_DIR!;!PATH!"
+for %%d in ("!NODE_EXE!") do set "NODE_DIR=%%~dpd"
+set "NODE_DIR=!NODE_DIR:~0,-1!"
+set "PATH=!NODE_DIR!;!PATH!"
 for /f "tokens=1" %%v in ('"!NODE_EXE!" -v') do echo [OK] Node.js %%v
 
 :have_node
