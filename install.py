@@ -276,10 +276,16 @@ def main():
     ensure_ollama(os_type, install_root)
 
     print("\nInstalando dependencias...")
-    run([npm, "install"], cwd=repo_dir, check=True)
+    if os_type == "windows":
+        run(["cmd", "/c", npm, "install"], cwd=repo_dir, check=True)
+    else:
+        run([npm, "install"], cwd=repo_dir, check=True)
 
     print("\nCompilando...")
-    run([node_bin, str(repo_dir / "node_modules" / ".bin" / "vite"), "build"], cwd=repo_dir, check=True)
+    if os_type == "windows":
+        run(["cmd", "/c", npm, "run", "build"], cwd=repo_dir, check=True)
+    else:
+        run([npm, "run", "build"], cwd=repo_dir, check=True)
 
     dist = repo_dir / "dist"
     public = repo_dir / "public"
@@ -316,7 +322,7 @@ def main():
 setlocal enabledelayedexpansion
 set OLLAMA_ORIGINS=*
 cd /d "{install_root}"
-set NODE={node_bin}
+set "NODE={node_bin}"
 if exist "%~dp0\\node_portable\\node.exe" set NODE=%~dp0\\node_portable\\node.exe
 for /d %%d in ("%~dp0\\node_portable\\*") do if exist "%%d\\node.exe" set NODE=%%d\\node.exe
 if "%NODE%"=="node" (
@@ -324,9 +330,11 @@ if "%NODE%"=="node" (
 )
 where curl >nul 2>&1 && curl -s http://localhost:11434/api/tags >nul 2>&1
 if !ERRORLEVEL! neq 0 powershell -NoP -C "try{{iwr -Uri 'http://localhost:11434/api/tags' -UseB -Time 2|Out-Null;exit 0}}catch{{exit 1}}" >nul 2>&1
+set "OLLAMA=ollama"
+if exist "%~dp0\\ollama_portable\\ollama.exe" set OLLAMA=%~dp0\\ollama_portable\\ollama.exe
+for /d %%d in ("%~dp0\\ollama_portable\\*") do if exist "%%d\\ollama.exe" set OLLAMA=%%d\\ollama.exe
 if !ERRORLEVEL! neq 0 (
-  if exist "{install_root}\\ollama_portable\\ollama.exe" start /b "" "{install_root}\\ollama_portable\\ollama.exe" serve
-  if exist "ollama_portable\\ollama.exe" start /b "" "ollama_portable\\ollama.exe" serve
+  if not "%OLLAMA%"=="ollama" start /b "" "!OLLAMA!" serve
   timeout /t 5 /nobreak >nul
 )
 start /b "" "!NODE!" server.mjs

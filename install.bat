@@ -13,43 +13,60 @@ echo     Instalador de IngenIA
 echo ============================================
 echo.
 
-:: Clean previous installation BEFORE downloading portables,
-:: otherwise the portables would be deleted along with the app
-if exist "!INSTALL_DIR!" rmdir /s /q "!INSTALL_DIR!"
+:: Clean previous installation but KEEP the portable runtimes
+:: (node_portable / ollama_portable) to avoid re-downloading them
+if exist "!INSTALL_DIR!" (
+    for %%d in ("!INSTALL_DIR!\*") do (
+        if /i not "%%~nxd"=="node_portable" if /i not "%%~nxd"=="ollama_portable" (
+            if exist "%%d\" (rd /s /q "%%d") else (del /q "%%d")
+        )
+    )
+)
 
 :: -- Node.js --
 where node >nul 2>&1
 if !ERRORLEVEL! equ 0 (
-    for /f "tokens=1" %%v in ('node -v') do echo [OK] Node.js %%v en PATH
-    goto :have_node
+    where npm >nul 2>&1
+    if !ERRORLEVEL! equ 0 (
+        for /f "tokens=1" %%v in ('node -v') do echo [OK] Node.js %%v en PATH
+        goto :have_node
+    )
 )
 
-echo [!] Node.js no encontrado en PATH.
+echo [!] Node.js/npm no encontrado en PATH.
 echo Descargando Node.js !NODE_VERSION! portable...
 echo.
-
-if not exist "!PORTABLE_DIR!" mkdir "!PORTABLE_DIR!"
-set "NODE_URL=https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip"
-set "ARCHIVE=%TEMP%\node-portable.zip"
-
-powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!NODE_URL!' -OutFile '!ARCHIVE!'}"
-if !ERRORLEVEL! neq 0 (
-    echo [!] Error al descargar Node.js
-    echo    Descargalo manualmente desde:
-    echo    https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip
-    pause
-    exit /b 1
-)
-
-echo Extrayendo...
-powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!ARCHIVE!', '!PORTABLE_DIR!')}"
-del "!ARCHIVE!" 2>nul
 
 set "NODE_EXE="
 for /d %%d in ("!PORTABLE_DIR!\*") do (
     if exist "%%d\node.exe" set "NODE_EXE=%%d\node.exe"
 )
-if "!NODE_EXE!"=="" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
+if "!NODE_EXE!"=="" if exist "!PORTABLE_DIR!\node.exe" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
+
+if "!NODE_EXE!"=="" (
+    if not exist "!PORTABLE_DIR!" mkdir "!PORTABLE_DIR!"
+    set "NODE_URL=https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip"
+    set "ARCHIVE=%TEMP%\node-portable.zip"
+
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!NODE_URL!' -OutFile '!ARCHIVE!'}"
+    if !ERRORLEVEL! neq 0 (
+        echo [!] Error al descargar Node.js
+        echo    Descargalo manualmente desde:
+        echo    https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip
+        pause
+        exit /b 1
+    )
+
+    echo Extrayendo...
+    powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!ARCHIVE!', '!PORTABLE_DIR!')}"
+    del "!ARCHIVE!" 2>nul
+
+    set "NODE_EXE="
+    for /d %%d in ("!PORTABLE_DIR!\*") do (
+        if exist "%%d\node.exe" set "NODE_EXE=%%d\node.exe"
+    )
+    if "!NODE_EXE!"=="" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
+)
 
 if not exist "!NODE_EXE!" (
     echo [!] Error: no se encontro node.exe
@@ -77,28 +94,36 @@ echo [!] Ollama no encontrado en PATH.
 echo Descargando Ollama portable...
 echo.
 
-if not exist "!OLLAMA_DIR!" mkdir "!OLLAMA_DIR!"
-set "OLLAMA_URL=https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip"
-set "OLLAMA_ARCHIVE=%TEMP%\ollama-portable.zip"
-
-powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!OLLAMA_URL!' -OutFile '!OLLAMA_ARCHIVE!'}"
-if !ERRORLEVEL! neq 0 (
-    echo [!] Error al descargar Ollama
-    echo    Descargalo manualmente desde:
-    echo    https://ollama.com/download/OllamaSetup.exe
-    pause
-    exit /b 1
-)
-
-echo Extrayendo...
-powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!OLLAMA_ARCHIVE!', '!OLLAMA_DIR!')}"
-del "!OLLAMA_ARCHIVE!" 2>nul
-
 set "OLLAMA_EXE="
 for /d %%d in ("!OLLAMA_DIR!\*") do (
     if exist "%%d\ollama.exe" set "OLLAMA_EXE=%%d\ollama.exe"
 )
-if "!OLLAMA_EXE!"=="" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
+if "!OLLAMA_EXE!"=="" if exist "!OLLAMA_DIR!\ollama.exe" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
+
+if "!OLLAMA_EXE!"=="" (
+    if not exist "!OLLAMA_DIR!" mkdir "!OLLAMA_DIR!"
+    set "OLLAMA_URL=https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip"
+    set "OLLAMA_ARCHIVE=%TEMP%\ollama-portable.zip"
+
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!OLLAMA_URL!' -OutFile '!OLLAMA_ARCHIVE!'}"
+    if !ERRORLEVEL! neq 0 (
+        echo [!] Error al descargar Ollama
+        echo    Descargalo manualmente desde:
+        echo    https://ollama.com/download/OllamaSetup.exe
+        pause
+        exit /b 1
+    )
+
+    echo Extrayendo...
+    powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!OLLAMA_ARCHIVE!', '!OLLAMA_DIR!')}"
+    del "!OLLAMA_ARCHIVE!" 2>nul
+
+    set "OLLAMA_EXE="
+    for /d %%d in ("!OLLAMA_DIR!\*") do (
+        if exist "%%d\ollama.exe" set "OLLAMA_EXE=%%d\ollama.exe"
+    )
+    if "!OLLAMA_EXE!"=="" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
+)
 
 if not exist "!OLLAMA_EXE!" (
     echo [!] Error: no se encontro ollama.exe
@@ -107,6 +132,8 @@ if not exist "!OLLAMA_EXE!" (
 )
 
 echo [OK] Ollama portable descargado
+for %%d in ("!OLLAMA_EXE!") do set "OLLAMA_DIR=%%~dpd"
+set "OLLAMA_DIR=!OLLAMA_DIR:~0,-1!"
 set "PATH=!OLLAMA_DIR!;!PATH!"
 
 :have_ollama
