@@ -6,6 +6,7 @@ set "INSTALL_DIR=%LOCALAPPDATA%\IngenIA"
 set "SCRIPT_DIR=%~dp0"
 set "PORTABLE_DIR=%INSTALL_DIR%\node_portable"
 set "OLLAMA_DIR=%INSTALL_DIR%\ollama_portable"
+set "TRIES=3"
 
 echo.
 echo ============================================
@@ -43,38 +44,60 @@ for /d %%d in ("!PORTABLE_DIR!\*") do (
 )
 if "!NODE_EXE!"=="" if exist "!PORTABLE_DIR!\node.exe" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
 
-if "!NODE_EXE!"=="" (
-    if not exist "!PORTABLE_DIR!" mkdir "!PORTABLE_DIR!"
-    set "NODE_URL=https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip"
-    set "ARCHIVE=%TEMP%\node-portable.zip"
+if not "!NODE_EXE!"=="" goto :have_node_exe
 
-    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!NODE_URL!' -OutFile '!ARCHIVE!'}"
-    if !ERRORLEVEL! neq 0 (
-        echo [!] Error al descargar Node.js
-        echo    Descargalo manualmente desde:
-        echo    https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip
-        pause
-        exit /b 1
-    )
+if not exist "!PORTABLE_DIR!" mkdir "!PORTABLE_DIR!"
+set "NODE_URL=https://nodejs.org/dist/v!NODE_VERSION!/node-v!NODE_VERSION!-win-x64.zip"
+set "NODE_SUMS=https://nodejs.org/dist/v!NODE_VERSION!/SHASUMS256.txt"
+set "ARCHIVE=%TEMP%\node-portable.zip"
+set /a TRY=0
 
-    echo Extrayendo...
-    powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!ARCHIVE!', '!PORTABLE_DIR!')}"
-    del "!ARCHIVE!" 2>nul
+:node_download
+set /a TRY+=1
+echo.
+echo Descargando Node.js !NODE_VERSION! ^(intento !TRY!/!TRIES!^)...
+del "!ARCHIVE!" 2>nul
+powershell -NoP -Command "& {[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '!NODE_URL!' -OutFile '!ARCHIVE!' -TimeoutSec 120}"
+if !ERRORLEVEL! neq 0 goto :node_fail
 
-    set "NODE_EXE="
-    for /d %%d in ("!PORTABLE_DIR!\*") do (
-        if exist "%%d\node.exe" set "NODE_EXE=%%d\node.exe"
-    )
-    if "!NODE_EXE!"=="" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
+:: Verificar SHA256 contra SHASUMS256.txt
+powershell -NoP -Command "& {$ErrorActionPreference='Stop'; try{$s=(Invoke-WebRequest -UseBasicParsing -Uri '!NODE_SUMS!' -TimeoutSec 30).Content; $l=$s -split '\r?\n' | Where-Object { $_ -match 'node-v!NODE_VERSION!-win-x64\.zip' } | Select-Object -First 1; if(-not $l){Write-Host '   [x] No se encontro el checksum'; exit 1}; $e=($l -split '\s+')[0]; $a=(Get-FileHash -Algorithm SHA256 -Path '!ARCHIVE!').Hash.ToLower(); if($e -ne $a){Write-Host '   [x] Checksum incorrecto (descarga corrupta)'; exit 1}; Write-Host '   [OK] Checksum verificado'; exit 0}catch{Write-Host '   [x] Error verificando: '+$_.Exception.Message; exit 1}}"
+if !ERRORLEVEL! neq 0 goto :node_fail
+
+echo Extrayendo...
+powershell -NoP -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; try{[System.IO.Compression.ZipFile]::ExtractToDirectory('!ARCHIVE!','!PORTABLE_DIR!'); exit 0}catch{Write-Host '   [x] Error extrayendo: '+$_.Exception.Message; exit 1}}"
+if !ERRORLEVEL! neq 0 goto :node_fail
+del "!ARCHIVE!" 2>nul
+
+set "NODE_EXE="
+for /d %%d in ("!PORTABLE_DIR!\*") do (
+    if exist "%%d\node.exe" set "NODE_EXE=%%d\node.exe"
 )
+if "!NODE_EXE!"=="" set "NODE_EXE=!PORTABLE_DIR!\node.exe"
+goto :have_node_exe
 
+:node_fail
+if !TRY! lss !TRIES! (
+    echo [!] Fallo en la descarga/verificacion, reintentando...
+    timeout /t 3 /nobreak >nul
+    goto :node_download
+)
+echo.
+echo [ERROR] No se pudo descargar ni verificar Node.js tras !TRIES! intentos.
+echo   Descargalo manualmente desde:
+echo   !NODE_URL!
+echo   y extrae el contenido en: !PORTABLE_DIR!
+pause
+exit /b 1
+
+:have_node_exe
 if not exist "!NODE_EXE!" (
     echo [!] Error: no se encontro node.exe
     pause
     exit /b 1
 )
 
-echo [OK] Node.js portable descargado
+echo [OK] Node.js portable listo
 for %%d in ("!NODE_EXE!") do set "NODE_DIR=%%~dpd"
 set "NODE_DIR=!NODE_DIR:~0,-1!"
 set "PATH=!NODE_DIR!;!PATH!"
@@ -100,38 +123,58 @@ for /d %%d in ("!OLLAMA_DIR!\*") do (
 )
 if "!OLLAMA_EXE!"=="" if exist "!OLLAMA_DIR!\ollama.exe" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
 
-if "!OLLAMA_EXE!"=="" (
-    if not exist "!OLLAMA_DIR!" mkdir "!OLLAMA_DIR!"
-    set "OLLAMA_URL=https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip"
-    set "OLLAMA_ARCHIVE=%TEMP%\ollama-portable.zip"
+if not "!OLLAMA_EXE!"=="" goto :have_ollama_exe
 
-    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!OLLAMA_URL!' -OutFile '!OLLAMA_ARCHIVE!'}"
-    if !ERRORLEVEL! neq 0 (
-        echo [!] Error al descargar Ollama
-        echo    Descargalo manualmente desde:
-        echo    https://ollama.com/download/OllamaSetup.exe
-        pause
-        exit /b 1
-    )
+if not exist "!OLLAMA_DIR!" mkdir "!OLLAMA_DIR!"
+set "OLLAMA_URL=https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip"
+set "OLLAMA_ARCHIVE=%TEMP%\ollama-portable.zip"
+set /a TRY=0
 
-    echo Extrayendo...
-    powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('!OLLAMA_ARCHIVE!', '!OLLAMA_DIR!')}"
-    del "!OLLAMA_ARCHIVE!" 2>nul
+:ollama_download
+set /a TRY+=1
+echo.
+echo Descargando Ollama ^(intento !TRY!/!TRIES!^)...
+del "!OLLAMA_ARCHIVE!" 2>nul
+powershell -NoP -Command "& {[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '!OLLAMA_URL!' -OutFile '!OLLAMA_ARCHIVE!' -TimeoutSec 180}"
+if !ERRORLEVEL! neq 0 goto :ollama_fail
 
-    set "OLLAMA_EXE="
-    for /d %%d in ("!OLLAMA_DIR!\*") do (
-        if exist "%%d\ollama.exe" set "OLLAMA_EXE=%%d\ollama.exe"
-    )
-    if "!OLLAMA_EXE!"=="" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
+:: Verificar que el zip no este truncado/corrupto
+powershell -NoP -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; try{$z=[System.IO.Compression.ZipFile]::OpenRead('!OLLAMA_ARCHIVE!'); $z.Dispose(); Write-Host '   [OK] Zip integro'; exit 0}catch{Write-Host '   [x] Zip corrupto (descarga incompleta)'; exit 1}}"
+if !ERRORLEVEL! neq 0 goto :ollama_fail
+
+echo Extrayendo...
+powershell -NoP -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; try{[System.IO.Compression.ZipFile]::ExtractToDirectory('!OLLAMA_ARCHIVE!','!OLLAMA_DIR!'); exit 0}catch{Write-Host '   [x] Error extrayendo: '+$_.Exception.Message; exit 1}}"
+if !ERRORLEVEL! neq 0 goto :ollama_fail
+del "!OLLAMA_ARCHIVE!" 2>nul
+
+set "OLLAMA_EXE="
+for /d %%d in ("!OLLAMA_DIR!\*") do (
+    if exist "%%d\ollama.exe" set "OLLAMA_EXE=%%d\ollama.exe"
 )
+if "!OLLAMA_EXE!"=="" set "OLLAMA_EXE=!OLLAMA_DIR!\ollama.exe"
+goto :have_ollama_exe
 
+:ollama_fail
+if !TRY! lss !TRIES! (
+    echo [!] Fallo en la descarga/verificacion, reintentando...
+    timeout /t 3 /nobreak >nul
+    goto :ollama_download
+)
+echo.
+echo [ERROR] No se pudo descargar ni verificar Ollama tras !TRIES! intentos.
+echo   Descargalo manualmente desde:
+echo   https://ollama.com/download/OllamaSetup.exe
+pause
+exit /b 1
+
+:have_ollama_exe
 if not exist "!OLLAMA_EXE!" (
     echo [!] Error: no se encontro ollama.exe
     pause
     exit /b 1
 )
 
-echo [OK] Ollama portable descargado
+echo [OK] Ollama portable listo
 for %%d in ("!OLLAMA_EXE!") do set "OLLAMA_DIR=%%~dpd"
 set "OLLAMA_DIR=!OLLAMA_DIR:~0,-1!"
 set "PATH=!OLLAMA_DIR!;!PATH!"
@@ -219,4 +262,4 @@ echo.
 echo  Si el acceso directo no aparece, ejecuta:
 echo    !INSTALL_DIR!\fix_shortcut.bat
 echo.
-pause
+pause

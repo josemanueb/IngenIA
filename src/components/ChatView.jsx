@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { chatStream } from '../services/ollama'
 import { saveConversation, loadConversation, getConversationsForModel } from '../services/history'
 
-export default function ChatView({ model, ollamaRunning, params, conversationId, onConversationChange }) {
+export default function ChatView({ model, models, onModelSelect, ollamaRunning, params, conversationId, onConversationChange }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -464,7 +464,20 @@ export default function ChatView({ model, ollamaRunning, params, conversationId,
   return (
     <div className="chat-view">
       <div className="chat-header">
-        <h2>{model || 'Selecciona un modelo'}</h2>
+        {models && models.length > 0 ? (
+          <select
+            className="chat-model-select"
+            value={model || ''}
+            onChange={(e) => onModelSelect && onModelSelect(e.target.value)}
+            title="Modelo activo en el chat"
+          >
+            {models.map(m => (
+              <option key={m.name} value={m.name}>{m.name}</option>
+            ))}
+          </select>
+        ) : (
+          <h2>{model || 'Selecciona un modelo'}</h2>
+        )}
         {model && <span className="chat-model-tag">Chat</span>}
         <div className="header-left-actions">
           {model && messages.length > 0 && (

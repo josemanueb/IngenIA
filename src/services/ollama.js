@@ -114,6 +114,7 @@ export async function deleteModel(modelName) {
 }
 
 function formatOllamaError(raw) {
+  raw = raw || ''
   if (raw.includes('unknown model architecture') || raw.includes('mllama')) {
     return `El modelo no es compatible con esta versión de Ollama. Actualizá Ollama o re-descargá el modelo:\n  ollama pull ${raw.match(/model: '?(\S+)'?/)?.[1] || 'el modelo'}`
   }

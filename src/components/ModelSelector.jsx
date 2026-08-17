@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { pullModel, listModels } from '../services/ollama'
 import { getStaticModels, fetchLibraryModels } from '../services/ollamaLibrary'
+import { playNotificationSound } from '../services/sound'
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -21,9 +22,7 @@ const getTypeIcon = (type) => {
 export default function ModelSelector({ onComplete }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [availableModels, setAvailableModels] = useState(getStaticModels())
-  const [selected, setSelected] = useState(
-    getStaticModels().filter(m => m.recommended).map(m => m.name)
-  )
+  const [selected, setSelected] = useState([])
   const [downloading, setDownloading] = useState(null)
   const [progress, setProgress] = useState({})
   const [error, setError] = useState(null)
@@ -98,6 +97,7 @@ export default function ModelSelector({ onComplete }) {
           }
         })
         setCompleted(prev => [...prev, modelName])
+        playNotificationSound()
       } catch (err) {
         allOk = false
         setError(`Error descargando ${modelName}: ${err.message}`)

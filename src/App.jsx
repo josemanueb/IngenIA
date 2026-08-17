@@ -217,6 +217,8 @@ export default function App() {
         {view === 'chat' ? (
           <ChatView
             model={selectedModel}
+            models={models}
+            onModelSelect={handleModelSelect}
             ollamaRunning={ollamaRunning}
             params={params}
             conversationId={conversationId}

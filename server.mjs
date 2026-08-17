@@ -143,7 +143,7 @@ const server = http.createServer((req, res) => {
             res.end('Not found')
             return
           }
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' })
           res.end(data2)
         })
         return
@@ -153,7 +153,9 @@ const server = http.createServer((req, res) => {
       return
     }
     const ext = path.extname(filePath)
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' })
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' }
+    if (ext === '.html') headers['Cache-Control'] = 'no-cache'
+    res.writeHead(200, headers)
     res.end(data)
   })
 })

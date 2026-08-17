@@ -371,53 +371,7 @@ mkdir -p "$HOME/.local/share/applications"
 cp "$DESKTOP_FILE" "$MENU_FILE"
 info "Acceso directo creado en el menu de aplicaciones"
 
-cat > "$INSTALL_DIR/uninstall.sh" << 'UNINSTALL'
-#!/bin/bash
-set -euo pipefail
-INSTALL_DIR="$HOME/.local/share/ingenia"
-DESKTOP_DIR="${XDG_DESKTOP_DIR:-$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")}"
-
-echo ""
-echo "  ╔═══════════════════════════════════╗"
-echo "  ║     Desinstalando IngenIA         ║"
-echo "  ╚═══════════════════════════════════╝"
-echo ""
-
-if pgrep -f "node server.mjs" >/dev/null 2>&1; then
-  pkill -f "node server.mjs" 2>/dev/null || true
-  echo "  [✓] Servidor detenido"
-fi
-
-if pgrep -f "ollama serve" >/dev/null 2>&1; then
-  pkill -f "ollama serve" 2>/dev/null || true
-  echo "  [✓] Ollama detenido"
-fi
-
-if [ -d "$INSTALL_DIR" ]; then
-  rm -rf "$INSTALL_DIR"
-  echo "  [✓] Archivos eliminados"
-else
-  echo "  [!] No se encontraron archivos en $INSTALL_DIR"
-fi
-
-if [ -f "$DESKTOP_DIR/IngenIA.desktop" ]; then
-  rm -f "$DESKTOP_DIR/IngenIA.desktop"
-  echo "  [✓] Acceso directo del Escritorio eliminado"
-fi
-
-if [ -f "$HOME/.local/share/applications/IngenIA.desktop" ]; then
-  rm -f "$HOME/.local/share/applications/IngenIA.desktop"
-  echo "  [✓] Acceso directo del menu eliminado"
-fi
-
-rm -f /tmp/ingenia-vite.log 2>/dev/null || true
-
-echo ""
-echo "  Desinstalacion completada."
-echo "  Los modelos de Ollama no fueron eliminados."
-echo "  Si deseas eliminarlos: ollama rm nombre_del_modelo"
-echo ""
-UNINSTALL
+cp "$APP_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/uninstall.sh"
 info "Script de desinstalacion creado"
 
