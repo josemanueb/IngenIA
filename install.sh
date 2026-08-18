@@ -3,6 +3,10 @@ set -euo pipefail
 
 INSTALL_DIR="$HOME/.local/share/ingenia"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Asegurar que ~/.local/bin este en PATH (node/ollama portables del sistema)
+export PATH="$HOME/.local/bin:$PATH"
+
 NODE_MIN="18"
 NODE_VERSION="20.18.1"
 PORTABLE_DIR="/tmp/ingenia-node-portable"
@@ -104,6 +108,16 @@ ensure_ollama() {
     local zst_url="https://github.com/ollama/ollama/releases/download/${latest_tag}/ollama-linux-amd64.tar.zst"
     local zst_archive="/tmp/ollama.tar.zst"
 
+    # Verificar espacio antes de descargar (tar ~2.2G + extraccion ~3G)
+    local zst_dir
+    zst_dir=$(dirname "$zst_archive")
+    local free_kb=$(df -k "$zst_dir" 2>/dev/null | awk 'NR==2{print $4}')
+    if [ -n "$free_kb" ] && [ "$free_kb" -lt 6291456 ]; then
+      warn "No hay espacio suficiente en $zst_dir ($(df -h "$zst_dir" | awk 'NR==2{print $4}') libres, se necesitan ~6GB)."
+      warn "Si Ollama ya esta instalado, agregalo al PATH: export PATH=\"\$HOME/.local/bin:\$PATH\""
+      error "Ollama portable no cabe en este sistema."
+    fi
+
     echo "  Descargando Ollama ${latest_tag}..."
     echo "  URL: $zst_url"
     set +e
@@ -129,14 +143,14 @@ ensure_ollama() {
         fi
 
         if command -v zstd &>/dev/null; then
-          tar -I zstd -xf "$zst_archive" -C "$OLLAMA_PORTABLE_DIR" 2>/dev/null
+          tar -I zstd -xf "$zst_archive" -C "$OLLAMA_PORTABLE_DIR"
         fi
 
         # If extraction failed or zstd not available, try using the binary directly
         if [ ! -f "$OLLAMA_PORTABLE_DIR/ollama" ] && [ ! -f "$OLLAMA_PORTABLE_DIR/bin/ollama" ]; then
           echo "  Extrayendo sin zstd (usando solo tar)..."
           if command -v zstd &>/dev/null; then
-            zstd -d "$zst_archive" -o /tmp/ollama.tar 2>/dev/null && tar -xf /tmp/ollama.tar -C "$OLLAMA_PORTABLE_DIR" 2>/dev/null
+            zstd -d "$zst_archive" -o /tmp/ollama.tar && tar -xf /tmp/ollama.tar -C "$OLLAMA_PORTABLE_DIR"
           fi
           rm -f /tmp/ollama.tar 2>/dev/null || true
         fi
@@ -199,6 +213,11 @@ if [ -z "$HTTP_CMD" ]; then
 fi
 info "Utilidad HTTP: $HTTP_CMD"
 
+if ! command -v npm &>/dev/null; then
+  if [ -d "$PORTABLE_DIR/bin" ] && [ -f "$PORTABLE_DIR/bin/npm" ]; then
+    export PATH="$PORTABLE_DIR/bin:$PATH"
+  fi
+fi
 if ! command -v npm &>/dev/null; then
   error "npm no encontrado (portable defectuoso)"
 fi
