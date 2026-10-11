@@ -7,7 +7,7 @@ import ModelSelector from './components/ModelSelector'
 import { THEMES } from './components/ThemeSelector'
 import { listModels, checkOllamaStatus, getRunningModels, preloadModel } from './services/ollama'
 import { checkForUpdates } from './services/updater'
-import { getRecentConversations, loadConversation, deleteConversation, getConversationsForModel } from './services/history'
+import { deleteConversation } from './services/history'
 
 const DEFAULT_PARAMS = {
   temperature: 0.8,

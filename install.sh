@@ -156,17 +156,30 @@ ensure_ollama() {
         fi
         rm -f "$zst_archive"
 
-        # Find the ollama binary inside the extracted files
-        local found=$(find "$OLLAMA_PORTABLE_DIR" -name "ollama" -type f 2>/dev/null | head -1)
+        # Find the ollama binary inside the extracted files.
+        local found
+        found=$(find "$OLLAMA_PORTABLE_DIR" -name "ollama" -type f -not -path "*/lib/*" 2>/dev/null | head -1)
+        if [ -z "$found" ]; then
+          found=$(find "$OLLAMA_PORTABLE_DIR" -name "ollama" -type f 2>/dev/null | head -1)
+        fi
         if [ -n "$found" ]; then
-          mv "$found" "$ollama_bin" 2>/dev/null
-          rm -rf "$OLLAMA_PORTABLE_DIR" 2>/dev/null
-          mkdir -p "$OLLAMA_PORTABLE_DIR"
-          mv "$ollama_bin" "$OLLAMA_PORTABLE_DIR/" 2>/dev/null
+          # Copy the binary to a temporary location outside the directory we are about to purge
+          local tmp_ollama
+          tmp_ollama=$(mktemp)
+          cp -f "$found" "$tmp_ollama" || true
+          if [ -s "$tmp_ollama" ]; then
+            rm -rf "$OLLAMA_PORTABLE_DIR"
+            mkdir -p "$OLLAMA_PORTABLE_DIR"
+            mv "$tmp_ollama" "$OLLAMA_PORTABLE_DIR/ollama"
+            # Ensure it's executable
+            chmod +x "$OLLAMA_PORTABLE_DIR/ollama" 2>/dev/null || true
+          fi
           ollama_bin="$OLLAMA_PORTABLE_DIR/ollama"
-          if head -c 4 "$ollama_bin" | grep -q $'\x7f\x45\x4c\x46'; then
+          if [ -f "$ollama_bin" ] && head -c 4 "$ollama_bin" 2>/dev/null | grep -q $'\x7f\x45\x4c\x46'; then
             success=1
           fi
+          # Clean up temp file just in case
+          rm -f "$tmp_ollama" 2>/dev/null || true
         fi
       fi
     fi
@@ -199,7 +212,13 @@ ensure_ollama() {
     fi
   fi
 
-  chmod +x "$ollama_bin"
+  # Si seguimos aqui sin binario portable, no hay nada que hacer: abortar con un
+  # mensaje claro en lugar de fallar en el chmod siguiente (set -e).
+  if [ ! -f "$ollama_bin" ]; then
+    error "No se encontro el binario de Ollama en $ollama_portable (si ya lo tenias, agregalo al PATH y reintenta)"
+  fi
+
+  chmod +x "$ollama_bin" 2>/dev/null || true
   export PATH="$OLLAMA_PORTABLE_DIR:$PATH"
   local ver=$(ollama -v 2>&1 || true)
   info "Ollama portable listo ($ver)"
@@ -266,12 +285,12 @@ if [ -d "$PORTABLE_DIR" ] && [ -f "$PORTABLE_DIR/bin/node" ]; then
   cp -r "$PORTABLE_DIR"/* "$INSTALL_DIR/node_portable/"
   info "Node.js portable copiado a la instalacion"
 elif [ -d "$PORTABLE_DIR" ]; then
-  local node_bin
+  # Sin 'local': este bloque es de nivel superior y 'local' fuera de una
+  # funcion aborta el script bajo 'set -euo pipefail'.
   node_bin=$(find "$PORTABLE_DIR" -name "node" -type f 2>/dev/null | head -1)
   if [ -n "$node_bin" ]; then
     mkdir -p "$INSTALL_DIR/node_portable/bin"
     cp "$node_bin" "$INSTALL_DIR/node_portable/bin/"
-    local node_dir
     node_dir=$(dirname "$node_bin")
     if [ -f "$node_dir/npm" ]; then
       cp "$node_dir/npm" "$INSTALL_DIR/node_portable/bin/"

@@ -11,7 +11,6 @@ export default function CompareView({ models, ollamaRunning, params }) {
   const resultsEndRef = useRef(null)
   const resultsRef = useRef({})
   const unmountedRef = useRef(false)
-  const runningRef = useRef({})
 
   useEffect(() => {
     return () => {

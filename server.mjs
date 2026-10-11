@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.INGENIA_PORT || 5173
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
+const HOST = process.env.INGENIA_HOST || '127.0.0.1'
 const isWin = process.platform === 'win32'
 
 const MIME = {
@@ -51,18 +52,33 @@ function proxyRequest(req, res) {
   })
 
   proxy.on('error', () => {
-    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+    if (res.headersSent) return
+    res.writeHead(502, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'No se pudo conectar con Ollama. Asegurate de que ollama serve este corriendo.' }))
   })
 
   req.pipe(proxy)
 }
 
+// Limite generoso para adjuntos (imagenes en base64) pero acotado, para que un
+// cliente no pueda agotar la memoria del proceso con un body gigante.
+const MAX_BODY_BYTES = 100 * 1024 * 1024
+
 function collectBody(req) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const chunks = []
-    req.on('data', c => chunks.push(c))
+    let size = 0
+    req.on('data', c => {
+      size += c.length
+      if (size > MAX_BODY_BYTES) {
+        reject(Object.assign(new Error('Cuerpo demasiado grande'), { statusCode: 413 }))
+        req.destroy()
+        return
+      }
+      chunks.push(c)
+    })
     req.on('end', () => resolve(Buffer.concat(chunks).toString()))
+    req.on('error', reject)
   })
 }
 
@@ -82,6 +98,9 @@ function handleTts(req, res) {
       return sendJson(res, { ok: false, error: 'JSON invalido' }, 400)
     }
     if (!text) return sendJson(res, { ok: false, error: 'text requerido' }, 400)
+    if (typeof text !== 'string' || text.length > 10000) {
+      return sendJson(res, { ok: false, error: 'texto invalido o demasiado largo' }, 400)
+    }
 
     const langCode = lang.startsWith('en') ? 'en' : 'es'
 
@@ -99,14 +118,25 @@ function handleTts(req, res) {
         sendJson(res, { ok: true })
       }
     })
+  }).catch(err => {
+    if (!res.headersSent) {
+      sendJson(res, { ok: false, error: err.message }, err.statusCode || 400)
+    }
   })
 }
 
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/api/')) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    // El renderer se sirve desde este mismo origen, asi que no hace falta
+    // abrir el CORS. Se refleja el Origin solo si es local; el wildcard
+    // anterior permitia que cualquier pagina de la red condujera Ollama.
+    const origin = req.headers.origin
+    if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin)
+      res.setHeader('Vary', 'Origin')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    }
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204)
@@ -160,7 +190,11 @@ const server = http.createServer((req, res) => {
   })
 })
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`IngenIA corriendo en http://localhost:${PORT}`)
+server.listen(PORT, HOST, () => {
+  const shown = HOST === '0.0.0.0' ? 'localhost (expuesto en todas las interfaces)' : HOST
+  console.log(`IngenIA corriendo en http://${shown}:${PORT}`)
   console.log(`Proxy Ollama -> ${OLLAMA_URL}`)
+  if (HOST !== '127.0.0.1' && HOST !== 'localhost') {
+    console.warn(`AVISO: el servidor escucha en ${HOST}. Cualquiera en la red puede controlar Ollama a traves de /api.`)
+  }
 })

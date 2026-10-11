@@ -26,16 +26,7 @@ export async function listModels() {
   return data.models || []
 }
 
-export async function getModelInfo(modelName) {
-  const res = await fetch('/api/show', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: modelName }),
-    signal: withTimeout(null, 5000),
-  })
-  if (!res.ok) throw new Error('No se pudo obtener info del modelo')
-  return res.json()
-}
+
 
 export async function getRunningModels() {
   try {

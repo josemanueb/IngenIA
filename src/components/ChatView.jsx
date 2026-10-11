@@ -91,6 +91,8 @@ export default function ChatView({ model, models, onModelSelect, ollamaRunning, 
     }
   }, [])
 
+  const retryIntervalRef = useRef(null);
+
   useEffect(() => {
     if (!('speechSynthesis' in window)) {
       setTtsError('Tu navegador no soporta síntesis de voz')
@@ -106,15 +108,20 @@ export default function ChatView({ model, models, onModelSelect, ollamaRunning, 
     loadVoices()
     window.speechSynthesis.onvoiceschanged = loadVoices
     // Force periodic retry on Linux (speech-dispatcher may start late)
-    const retryInterval = setInterval(() => {
+    retryIntervalRef.current = setInterval(() => {
       const v = window.speechSynthesis.getVoices()
       if (v.length > 0 && ttsVoices.length === 0) {
         setTtsVoices(v)
         setTtsError(null)
       }
     }, 3000)
-    return () => clearInterval(retryInterval)
-  }, [ttsVoices.length])
+    return () => {
+      if (retryIntervalRef.current) {
+        clearInterval(retryIntervalRef.current)
+      }
+      window.speechSynthesis.onvoiceschanged = null
+    }
+  }, [])
 
   const handleNewChat = () => {
     if (messages.length > 0) {

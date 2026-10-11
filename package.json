@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "vite & electron .",
-    "electron:dev:win": "start /b cmd /c vite & electron .",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "electron:dev:win": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
     "start": "electron .",
     "serve": "node server.mjs",
     "dist:linux": "electron-builder --linux",
@@ -26,6 +26,7 @@
       "dist/**/*",
       "electron/**/*",
       "public/**/*",
+      "server.mjs",
       "package.json"
     ],
     "extraResources": [
@@ -72,8 +73,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.5.2",
+    "concurrently": "^9.1.2",
     "electron": "^35.3.0",
     "electron-builder": "^25.1.8",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "wait-on": "^8.0.3"
   }
 }

@@ -28,7 +28,10 @@ NODE_MIRRORS = {
 }
 
 OLLAMA_MIRRORS = {
-    "linux": "https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tgz",
+    # Ollama publica el binario de Linux comprimido con zstd (.tar.zst), no
+    # como .tgz. La URL anterior a .tgz devolvia 404 y hacia fallar el
+    # instalador en Linux.
+    "linux": "https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tar.zst",
     "windows": "https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip",
 }
 
@@ -122,17 +125,39 @@ def ensure_ollama(os_type, install_root):
     if os_type == "windows":
         archive = archive.with_suffix(".zip")
     else:
-        archive = archive.with_suffix(".tgz")
+        archive = archive.with_suffix(".tar.zst")
     download(url, archive)
     if os_type == "linux":
-        with tarfile.open(archive, "r:gz") as tar:
-            tar.extractall(portable_dir)
+        # Ollama publica binarios Linux comprimidos con zstd (.tar.zst)
+        # Necesitamos la utilidad 'unzstd' para extraerla.
+        if shutil.which("unzstd") is None:
+            raise RuntimeError(
+                "Se requiere 'unzstd' para instalar Ollama portable en Linux. "
+                "Instálalo (por ejemplo: sudo apt install zstd) o asegúrate de que "
+                "ollama esté disponible en tu PATH."
+            )
+        try:
+            # Descomprimir primero el flujo zstd, luego extraer el tar resultante
+            import subprocess
+            with open(archive, "rb") as f_zstd:
+                # unzstd -d -c descomprime a stdout
+                tar_data = subprocess.check_output(["unzstd", "-d", "-c"], stdin=f_zstd)
+            # Ahora extraemos el tar desde memoria
+            import tarfile
+            import io
+            with tarfile.open(fileobj=io.BytesIO(tar_data), mode="r") as tar:
+                tar.extractall(portable_dir)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Falló al descomprimir con unzstd: {e}")
+        except tarfile.TarError as e:
+            raise RuntimeError(f"Archivo tar corrupto después de descomprimir: {e}")
         ollama_bin = portable_dir / "ollama"
         if not ollama_bin.exists():
             found = list(portable_dir.rglob("ollama"))
             if found:
                 shutil.move(str(found[0]), str(ollama_bin))
         os.chmod(ollama_bin, 0o755)
+        archive.unlink(missing_ok=True)
     else:
         with zipfile.ZipFile(archive, "r") as zf:
             zf.extractall(portable_dir)
